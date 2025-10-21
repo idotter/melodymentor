@@ -45,8 +45,12 @@
 			return;
 		}
 
+		// **FINALE KORREKTUR: Wir säubern den Dateinamen**
+		// Ersetze alle Leerzeichen und Sonderzeichen, um einen gültigen Pfad zu erzeugen.
+		const sanitizedFileName = audioFile.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+		const filePath = `${data.user?.id}/${data.classData?.id}/${Date.now()}-${sanitizedFileName}`;
+
 		// 1. Direkter Upload vom Browser zu Supabase Storage
-		const filePath = `${data.user?.id}/${data.classData?.id}/${Date.now()}-${audioFile.name}`;
 		const { error: uploadError } = await data.supabase.storage
 			.from('songs')
 			.upload(filePath, audioFile);
