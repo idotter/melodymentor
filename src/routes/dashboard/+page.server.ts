@@ -3,38 +3,29 @@ import type { Actions, PageServerLoad } from './$types';
 
 // Die `load`-Funktion holt die Daten für die Dashboard-Seite.
 export const load: PageServerLoad = async ({ locals: { supabase, user } }) => {
-	// **FINALE KORREKTUR: Paranoider Sicherheits-Check**
-	// Wir vertrauen nicht mehr nur dem Wächter, sondern prüfen hier erneut.
-	// Wenn kein Benutzer da ist, existiert die Seite für uns nicht.
-	if (!user) {
-		throw redirect(303, '/login');
-	}
-
-	// Lade die Klassen nur, wenn wir sicher einen Benutzer haben.
+	// Wir können sicher sein, dass `user` existiert, da der Wächter uns schützt.
 	const { data: classes, error } = await supabase
 		.from('classes')
 		.select('*')
-		.eq('owner_id', user.id);
+		.eq('owner_id', user!.id);
 
 	if (error) {
 		console.error('Fehler beim Laden der Klassen:', error);
-		// Gib im Fehlerfall eine leere Liste zurück, um einen Absturz zu verhindern.
-		return { classes: [], user };
+		return { classes: [], user: user };
 	}
 
-	return { classes, user };
+	return { classes, user: user };
 };
 
 export const actions: Actions = {
-	// Die Logout-Funktion ist korrekt und bleibt unverändert.
+	// Logout-Funktion
 	logout: async ({ locals: { supabase } }) => {
 		await supabase.auth.signOut();
 		throw redirect(303, '/login');
 	},
 
-	// Die createClass-Funktion ist korrekt und bleibt unverändert.
+	// createClass-Funktion
 	createClass: async ({ request, locals: { supabase, user } }) => {
-		// Auch hier fügen wir einen paranoiden Check hinzu.
 		if (!user) {
 			return fail(401, { error: true, message: 'Nicht autorisiert.' });
 		}
