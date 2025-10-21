@@ -1,46 +1,35 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
-// Die `load`-Funktion wird ausgeführt, bevor die Seite geladen wird.
-// Sie holt die Daten, die auf der Seite angezeigt werden sollen.
-export const load: PageServerLoad = async ({ locals }) => {
-	const { user } = locals;
+// Die `load`-Funktion holt die Daten, die NUR auf dieser spezifischen Seite angezeigt werden.
+export const load: PageServerLoad = async ({ locals: { supabase, user } }) => {
+	// Wir können hier sicher sein, dass `user` existiert,
+	// weil unser "Wächter" (`+layout.server.ts`) uns bereits geschützt hat.
 
-	if (!user) {
-		throw redirect(303, '/login');
-	}
-
-	// KORREKTUR: Verwende `locals.supabase`
-	const { data: classes, error } = await locals.supabase
+	const { data: classes, error } = await supabase
 		.from('classes')
 		.select('*')
-		.eq('owner_id', user.id);
+		.eq('owner_id', user!.id); // Das ! sagt TypeScript: "Ich weiss sicher, dass user hier nicht null ist"
 
 	if (error) {
 		console.error('Fehler beim Laden der Klassen:', error);
-		return { user, classes: [] };
+		return { classes: [] };
 	}
 
-	return { user, classes };
+	return { classes };
 };
 
 export const actions: Actions = {
-	// Die 'logout'-Action bleibt unverändert.
-	logout: async ({ locals, cookies }) => {
-		await locals.supabase.auth.signOut();
+	// Die Logout-Funktion bleibt unverändert.
+	logout: async ({ locals: { supabase }, cookies }) => {
+		await supabase.auth.signOut();
 		cookies.delete('sb-access-token', { path: '/' });
 		cookies.delete('sb-refresh-token', { path: '/' });
 		throw redirect(303, '/login');
 	},
 
-	// Neue 'createClass'-Action zum Erstellen einer Klasse.
-	createClass: async ({ request, locals }) => {
-		const { user } = locals;
-
-		if (!user) {
-			return fail(401, { error: true, message: 'Nicht autorisiert. Bitte erneut einloggen.' });
-		}
-
+	// Die createClass-Funktion, die nun auch auf den `user` vom Wächter vertraut.
+	createClass: async ({ request, locals: { supabase, user } }) => {
 		const formData = await request.formData();
 		const className = formData.get('className') as string;
 
@@ -50,15 +39,13 @@ export const actions: Actions = {
 
 		const classCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
-		// KORREKTUR: Verwende `locals.supabase`
-		const { error } = await locals.supabase.from('classes').insert({
+		const { error } = await supabase.from('classes').insert({
 			name: className,
-			owner_id: user.id,
+			owner_id: user!.id,
 			class_code: classCode
 		});
 
 		if (error) {
-			console.error('Fehler beim Erstellen der Klasse:', error);
 			return fail(500, {
 				error: true,
 				message: 'Klasse konnte nicht erstellt werden: ' + error.message
