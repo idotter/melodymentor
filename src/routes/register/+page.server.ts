@@ -1,8 +1,8 @@
 import { AuthApiError } from '@supabase/supabase-js';
 import { fail, redirect } from '@sveltejs/kit';
 
-// Wir verwenden jetzt wieder den sauberen Standard-Alias "$lib", der dank der tsconfig.json funktioniert.
-import { supabase } from '$lib/supabaseClient';
+// Wir fügen die Dateiendung .ts explizit hinzu, um das Auflösungsproblem zu beheben.
+import { supabase } from '$lib/supabaseClient.ts';
 
 import type { Actions } from './$types';
 
