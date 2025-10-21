@@ -40,6 +40,12 @@ export const actions: Actions = {
 	// Neue 'createClass'-Action zum Erstellen einer Klasse.
 	createClass: async ({ request, locals }) => {
 		const { user } = locals;
+
+		// HINZUGEFÜGT: Sicherheits-Check, um sicherzustellen, dass der Benutzer noch eingeloggt ist.
+		if (!user) {
+			return fail(401, { error: true, message: 'Nicht autorisiert. Bitte erneut einloggen.' });
+		}
+
 		const formData = await request.formData();
 		const className = formData.get('className') as string;
 
