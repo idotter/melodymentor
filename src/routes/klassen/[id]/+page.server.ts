@@ -1,4 +1,4 @@
-import { fail } from '@sveltejs/kit';
+import { error as svelteError, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { supabase } from '$lib/supabaseClient';
 
@@ -13,9 +13,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		.eq('id', classId)
 		.single(); // .single() holt nur einen einzelnen Datensatz
 
-	if (classError || !classData) {
+	// KORRIGIERT: Wir verwenden `throw svelteError`, um einen 404-Fehler korrekt zu behandeln.
+	if (classError) {
 		console.error('Fehler beim Laden der Klasse:', classError);
-		return fail(404, { message: 'Klasse nicht gefunden.' });
+		throw svelteError(404, { message: 'Klasse nicht gefunden oder du hast keine Berechtigung.' });
 	}
 
 	// Hole alle Songs, die zu dieser Klasse gehören
@@ -23,8 +24,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		.from('songs')
 		.select('*')
 		.eq('class_id', classId);
-		// Optional: Nach Bewertungen sortieren, sobald wir sie haben
-		// .order('average_rating', { ascending: false });
+	// Optional: Nach Bewertungen sortieren, sobald wir sie haben
+	// .order('average_rating', { ascending: false });
 
 	if (songsError) {
 		console.error('Fehler beim Laden der Songs:', songsError);
@@ -87,3 +88,4 @@ export const actions: Actions = {
 		return { success: true };
 	}
 };
+
