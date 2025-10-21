@@ -13,9 +13,14 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		.eq('id', classId)
 		.single(); // .single() holt nur einen einzelnen Datensatz
 
-	// KORRIGIERT: Wir verwenden `throw svelteError`, um einen 404-Fehler korrekt zu behandeln.
-	if (classError) {
-		console.error('Fehler beim Laden der Klasse:', classError);
+	// KORRIGIERT: Wir prüfen jetzt ZWEIMAL. Einmal auf einen allgemeinen Fehler
+	// UND einmal, ob die Daten überhaupt gefunden wurden. Das ist robuster.
+	if (classError || !classData) {
+		// Logge den spezifischen Fehler für uns im Backend
+		if (classError) {
+			console.error('Fehler beim Laden der Klasse:', classError);
+		}
+		// Sende eine saubere 404-Seite an den Benutzer
 		throw svelteError(404, { message: 'Klasse nicht gefunden oder du hast keine Berechtigung.' });
 	}
 
@@ -24,8 +29,6 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		.from('songs')
 		.select('*')
 		.eq('class_id', classId);
-	// Optional: Nach Bewertungen sortieren, sobald wir sie haben
-	// .order('average_rating', { ascending: false });
 
 	if (songsError) {
 		console.error('Fehler beim Laden der Songs:', songsError);
