@@ -3,12 +3,19 @@ import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
-	// Consult https://kit.svelte.dev/docs/integrations#preprocessors
-	// for more information about preprocessors
 	preprocess: vitePreprocess(),
-
 	kit: {
-		adapter: adapter()
+		adapter: adapter(),
+		// **HIER WIRD DER CSP-FEHLER ENDGÜLTIG BEHOBEN**
+		csp: {
+			directives: {
+				'script-src': ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+				'style-src': ["'self'", "'unsafe-inline'"],
+				'img-src': ['*', 'data:'],
+				'font-src': ["'self'", 'data:'],
+				'connect-src': ['*']
+			}
+		}
 	}
 };
 
