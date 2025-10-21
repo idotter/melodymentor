@@ -1,10 +1,13 @@
+import { createClient } from '@supabase/supabase-js';
 import { AuthApiError } from '@supabase/supabase-js';
 import { fail, redirect } from '@sveltejs/kit';
-
-// Wir fügen die Dateiendung .ts explizit hinzu, um das Auflösungsproblem zu beheben.
-import { supabase } from '$lib/supabaseClient.ts';
+import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 
 import type { Actions } from './$types';
+
+// Der Code aus der supabaseClient.ts Datei ist jetzt direkt hier drin.
+// Das eliminiert das Import-Problem endgültig.
+const supabase = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
 
 export const actions: Actions = {
 	register: async ({ request }) => {
