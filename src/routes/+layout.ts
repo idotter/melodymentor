@@ -1,5 +1,5 @@
 import { PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$env/static/public';
-import { createBrowserClient, isBrowser, parse } from '@supabase/ssr';
+import { createBrowserClient, isBrowser, parse, serialize } from '@supabase/ssr';
 import type { LayoutLoad } from './$types';
 
 // Diese `load`-Funktion ist das Herzstück der offiziellen Supabase-Architektur.
@@ -17,19 +17,24 @@ export const load: LayoutLoad = async ({ fetch, data, depends }) => {
 			fetch
 		},
 		cookies: {
+			// **HIER IST DIE FINALE KORREKTUR:**
+			// Die `get`, `set` und `remove` Methoden müssen ALLE implementiert sein,
+			// damit der Supabase Client die Cookies korrekt verwalten kann.
+			// Der vorherige Code hatte nur `get`.
 			get(key) {
-				// **HIER IST DIE LÖSUNG DES 500-ERRORS:**
-				// Die `isBrowser()`-Funktion prüft, ob der Code im Browser läuft.
-				// Nur dann versuchen wir, auf `document.cookie` zuzugreifen.
-				// Wenn der Code auf dem Server läuft (was den Absturz verursacht hat),
-				// verwenden wir stattdessen die sicheren `data.session`-Daten,
-				// die von `+layout.server.ts` übergeben wurden.
 				if (!isBrowser()) {
 					return JSON.stringify(data.session);
 				}
-
 				const cookie = parse(document.cookie);
 				return cookie[key];
+			},
+			set(key, value, options) {
+				if (!isBrowser()) return;
+				document.cookie = serialize(key, value, options);
+			},
+			remove(key, options) {
+				if (!isBrowser()) return;
+				document.cookie = serialize(key, '', { ...options, maxAge: -1 });
 			}
 		}
 	});
