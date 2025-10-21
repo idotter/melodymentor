@@ -1,12 +1,17 @@
+import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 
-// Diese Datei ist jetzt überflüssig, da die Seitendatei die Prüfung selbst übernimmt.
-// Um sicherzugehen, dass keine alten Reste Probleme machen, leeren wir sie
-// und lassen sie nur noch den Benutzer durchreichen.
+// Diese `load`-Funktion agiert als "Wächter" für alle Seiten
+// innerhalb des /dashboard-Verzeichnisses.
 export const load: LayoutServerLoad = async ({ locals: { user } }) => {
-	// Wir geben nur noch den `user` weiter, mehr nicht.
-	// Die Hauptseite (`+page.server.ts`) kümmert sich um die Weiterleitung,
-	// falls der `user` nicht existiert.
+	// Wenn `hooks.server.ts` keinen eingeloggten Benutzer findet...
+	if (!user) {
+		// ...leite den Benutzer sofort zur Login-Seite um.
+		// Das verhindert den 500-Error auf den Dashboard-Seiten.
+		throw redirect(303, '/login');
+	}
+
+	// Wenn ein Benutzer da ist, geben wir ihn an die Seite weiter.
 	return {
 		user
 	};
