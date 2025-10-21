@@ -5,7 +5,6 @@ import type { Actions, PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ locals: { supabase, user } }) => {
 	// Wir können hier sicher sein, dass `user` existiert,
 	// weil unser "Wächter" (`+layout.server.ts`) uns bereits geschützt hat.
-
 	const { data: classes, error } = await supabase
 		.from('classes')
 		.select('*')
@@ -20,11 +19,10 @@ export const load: PageServerLoad = async ({ locals: { supabase, user } }) => {
 };
 
 export const actions: Actions = {
-	// Die Logout-Funktion bleibt unverändert.
-	logout: async ({ locals: { supabase }, cookies }) => {
+	// KORREKTUR: Die signOut-Methode von @supabase/ssr kümmert sich
+	// automatisch um das Löschen der Cookies. Wir müssen nichts mehr manuell tun.
+	logout: async ({ locals: { supabase } }) => {
 		await supabase.auth.signOut();
-		cookies.delete('sb-access-token', { path: '/' });
-		cookies.delete('sb-refresh-token', { path: '/' });
 		throw redirect(303, '/login');
 	},
 
