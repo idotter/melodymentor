@@ -1,31 +1,25 @@
 import { error as svelteError, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { supabase } from '$lib/supabaseClient';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const { user } = locals;
 	const classId = params.id;
 
-	// Hole die Details der spezifischen Klasse
-	const { data: classData, error: classError } = await supabase
+	// KORREKTUR: Verwende `locals.supabase`
+	const { data: classDataArray, error: classError } = await locals.supabase
 		.from('classes')
 		.select('*')
-		.eq('id', classId)
-		.single(); // .single() holt nur einen einzelnen Datensatz
+		.eq('id', classId);
 
-	// KORRIGIERT: Wir prüfen jetzt ZWEIMAL. Einmal auf einen allgemeinen Fehler
-	// UND einmal, ob die Daten überhaupt gefunden wurden. Das ist robuster.
-	if (classError || !classData) {
-		// Logge den spezifischen Fehler für uns im Backend
-		if (classError) {
-			console.error('Fehler beim Laden der Klasse:', classError);
-		}
-		// Sende eine saubere 404-Seite an den Benutzer
+	if (classError || !classDataArray || classDataArray.length === 0) {
+		if (classError) console.error('Fehler beim Laden der Klasse:', classError);
 		throw svelteError(404, { message: 'Klasse nicht gefunden oder du hast keine Berechtigung.' });
 	}
 
-	// Hole alle Songs, die zu dieser Klasse gehören
-	const { data: songs, error: songsError } = await supabase
+	const classData = classDataArray[0];
+
+	// KORREKTUR: Verwende `locals.supabase`
+	const { data: songs, error: songsError } = await locals.supabase
 		.from('songs')
 		.select('*')
 		.eq('class_id', classId);
@@ -59,32 +53,30 @@ export const actions: Actions = {
 			return fail(400, { error: true, message: 'Alle Felder und eine Audio-Datei sind erforderlich.' });
 		}
 
-		// 1. Lade die Audio-Datei in Supabase Storage hoch
 		const filePath = `${user.id}/${classId}/${Date.now()}-${audioFile.name}`;
-		const { error: uploadError } = await supabase.storage.from('songs').upload(filePath, audioFile);
+		// KORREKTUR: Verwende `locals.supabase`
+		const { error: uploadError } = await locals.supabase.storage.from('songs').upload(filePath, audioFile);
 
 		if (uploadError) {
 			console.error('Fehler beim Hochladen der Datei:', uploadError);
 			return fail(500, { error: true, message: 'Datei konnte nicht hochgeladen werden.' });
 		}
 
-		// 2. Hole die öffentliche URL der hochgeladenen Datei
-		const { data: urlData } = supabase.storage.from('songs').getPublicUrl(filePath);
+		const { data: urlData } = locals.supabase.storage.from('songs').getPublicUrl(filePath);
 
-		// 3. Speichere die Song-Metadaten in der 'songs'-Datenbanktabelle
-		const { error: dbError } = await supabase.from('songs').insert({
+		// KORREKTUR: Verwende `locals.supabase`
+		const { error: dbError } = await locals.supabase.from('songs').insert({
 			title,
 			artist,
 			class_id: classId,
 			audio_url: urlData.publicUrl,
-			uploader_info: user.email, // Speichern, wer den Song hochgeladen hat
-			status: 'approved' // Als LP laden wir direkt als 'approved' hoch
+			uploader_info: user.email,
+			status: 'approved'
 		});
 
 		if (dbError) {
 			console.error('Fehler beim Speichern des Songs in der DB:', dbError);
-			// Optional: Lösche die hochgeladene Datei wieder, wenn der DB-Eintrag fehlschlägt
-			await supabase.storage.from('songs').remove([filePath]);
+			await locals.supabase.storage.from('songs').remove([filePath]);
 			return fail(500, { error: true, message: 'Song konnte nicht in der Datenbank gespeichert werden.' });
 		}
 
