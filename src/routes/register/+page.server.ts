@@ -1,59 +1,39 @@
+import { AuthApiError } from '@supabase/supabase-js';
 import { fail, redirect } from '@sveltejs/kit';
+
+// Die Import-Anweisung wurde angepasst, um den direkten Pfad zu verwenden.
+import { supabase } from '../../lib/supabaseClient.ts';
+
 import type { Actions } from './$types';
-import { supabase } from '$lib/supabaseClient';
 
 export const actions: Actions = {
-    default: async ({ request }) => {
-        const formData = await request.formData();
-        const fullName = formData.get('fullName') as string;
-        const email = formData.get('email') as string;
-        const password = formData.get('password') as string;
+	register: async ({ request, locals }) => {
+		const body = Object.fromEntries(await request.formData());
 
-        // --- Einfache Validierung ---
-        if (!fullName || !email || !password) {
-            return fail(400, {
-                message: 'Bitte alle Felder ausfüllen.',
-                success: false
-            });
-        }
-
-        if (password.length < 8) {
-            return fail(400, {
-                message: 'Das Passwort muss mindestens 8 Zeichen lang sein.',
-                success: false
-            });
-        }
-        
-        // --- Registrierung bei Supabase ---
-        const { error } = await supabase.auth.signUp({
-            email: email,
-            password: password,
+		// Hinweis: In SvelteKit wird `locals.supabase` oft durch "Hooks" bereitgestellt.
+		// Da wir das noch nicht konfiguriert haben, verwenden wir hier direkt den importierten `supabase` Client.
+		const { data, error: err } = await supabase.auth.signUp({
+			email: body.email as string,
+			password: body.password as string,
             options: {
-                // Hier speichern wir den vollen Namen in den Metadaten des Benutzers
                 data: {
-                    full_name: fullName
+                    full_name: body.full_name as string
                 }
             }
-        });
+		});
 
-        if (error) {
-            // Wenn der Benutzer bereits existiert, gibt Supabase einen spezifischen Fehler zurück
-            if (error.message.includes('User already registered')) {
-                 return fail(400, {
-                    message: 'Diese E-Mail-Adresse ist bereits registriert.',
-                    success: false
-                });
-            }
-            return fail(500, {
-                message: `Serverfehler: ${error.message}`,
-                success: false
-            });
-        }
+		if (err) {
+			if (err instanceof AuthApiError && err.status === 400) {
+				return fail(400, {
+					error: 'Ungültige E-Mail oder Passwort.'
+				});
+			}
+			return fail(500, {
+				error: 'Serverfehler. Bitte versuchen Sie es später erneut.'
+			});
+		}
 
-        // --- Erfolgreiche Registrierung ---
-        // Nach erfolgreicher Registrierung leiten wir den Benutzer zur Login-Seite weiter.
-        // Supabase sendet standardmässig eine Bestätigungs-E-Mail.
-        throw redirect(303, '/login?registered=true');
-    }
+		throw redirect(303, '/');
+	}
 };
 
