@@ -1,18 +1,16 @@
 import { AuthApiError } from '@supabase/supabase-js';
 import { fail, redirect } from '@sveltejs/kit';
 
-// Die Import-Anweisung wurde angepasst, um den direkten Pfad zu verwenden.
-import { supabase } from '../../lib/supabaseClient.ts';
+// Wir verwenden jetzt wieder den sauberen Standard-Alias "$lib", der dank der tsconfig.json funktioniert.
+import { supabase } from '$lib/supabaseClient';
 
 import type { Actions } from './$types';
 
 export const actions: Actions = {
-	register: async ({ request, locals }) => {
+	register: async ({ request }) => {
 		const body = Object.fromEntries(await request.formData());
 
-		// Hinweis: In SvelteKit wird `locals.supabase` oft durch "Hooks" bereitgestellt.
-		// Da wir das noch nicht konfiguriert haben, verwenden wir hier direkt den importierten `supabase` Client.
-		const { data, error: err } = await supabase.auth.signUp({
+		const { error: err } = await supabase.auth.signUp({
 			email: body.email as string,
 			password: body.password as string,
             options: {
