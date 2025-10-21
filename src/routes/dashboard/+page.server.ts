@@ -1,26 +1,22 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { supabase } from '$lib/supabaseClient';
 
 // Die `load`-Funktion wird ausgeführt, bevor die Seite geladen wird.
 // Sie holt die Daten, die auf der Seite angezeigt werden sollen.
 export const load: PageServerLoad = async ({ locals }) => {
 	const { user } = locals;
 
-	// Wenn kein Benutzer eingeloggt ist, sollte das Layout uns bereits umgeleitet haben,
-	// aber als doppelte Sicherheit prüfen wir hier nochmals.
 	if (!user) {
 		throw redirect(303, '/login');
 	}
 
-	// Hole alle Klassen aus der Datenbank, die dem aktuell eingeloggten Benutzer gehören.
-	const { data: classes, error } = await supabase
+	// KORREKTUR: Verwende `locals.supabase`
+	const { data: classes, error } = await locals.supabase
 		.from('classes')
 		.select('*')
 		.eq('owner_id', user.id);
 
 	if (error) {
-		// Im Fehlerfall geben wir eine leere Liste zurück und loggen den Fehler.
 		console.error('Fehler beim Laden der Klassen:', error);
 		return { user, classes: [] };
 	}
@@ -41,7 +37,6 @@ export const actions: Actions = {
 	createClass: async ({ request, locals }) => {
 		const { user } = locals;
 
-		// HINZUGEFÜGT: Sicherheits-Check, um sicherzustellen, dass der Benutzer noch eingeloggt ist.
 		if (!user) {
 			return fail(401, { error: true, message: 'Nicht autorisiert. Bitte erneut einloggen.' });
 		}
@@ -53,10 +48,10 @@ export const actions: Actions = {
 			return fail(400, { error: true, message: 'Klassenname darf nicht leer sein.' });
 		}
 
-		// Erzeuge einen zufälligen, einzigartigen Klassencode
 		const classCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
-		const { error } = await supabase.from('classes').insert({
+		// KORREKTUR: Verwende `locals.supabase`
+		const { error } = await locals.supabase.from('classes').insert({
 			name: className,
 			owner_id: user.id,
 			class_code: classCode
@@ -70,7 +65,6 @@ export const actions: Actions = {
 			});
 		}
 
-		// Kein redirect, die Seite lädt nach der Action automatisch neu und zeigt die neue Klasse an.
 		return { success: true };
 	}
 };
