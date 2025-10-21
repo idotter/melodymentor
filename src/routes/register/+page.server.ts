@@ -1,40 +1,43 @@
-import { createClient } from '@supabase/supabase-js';
-import { AuthApiError } from '@supabase/supabase-js';
 import { fail, redirect } from '@sveltejs/kit';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
-
 import type { Actions } from './$types';
-
-// Der Code aus der supabaseClient.ts Datei ist jetzt direkt hier drin.
-// Das eliminiert das Import-Problem endgültig.
-const supabase = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
+import { supabase } from '$lib/supabaseClient';
 
 export const actions: Actions = {
-	register: async ({ request }) => {
-		const body = Object.fromEntries(await request.formData());
+	default: async ({ request, url }) => {
+		const data = await request.formData();
+		const email = data.get('email') as string;
+		const password = data.get('password') as string;
+		const fullName = data.get('fullName') as string;
 
-		const { error: err } = await supabase.auth.signUp({
-			email: body.email as string,
-			password: body.password as string,
-            options: {
-                data: {
-                    full_name: body.full_name as string
-                }
-            }
-		});
-
-		if (err) {
-			if (err instanceof AuthApiError && err.status === 400) {
-				return fail(400, {
-					error: 'Ungültige E-Mail oder Passwort.'
-				});
-			}
-			return fail(500, {
-				error: 'Serverfehler. Bitte versuchen Sie es später erneut.'
-			});
+		if (!email || !password || !fullName) {
+			return fail(400, { message: 'Alle Felder sind erforderlich.', error: true });
 		}
 
-		throw redirect(303, '/');
+		// Erstelle den Benutzer in Supabase Auth
+		const { data: authData, error: authError } = await supabase.auth.signUp({
+			email,
+			password,
+			options: { emailRedirectTo: `${url.origin}/login` }
+		});
+
+		if (authError) {
+			return fail(500, { message: 'Benutzer konnte nicht erstellt werden: ' + authError.message, error: true });
+		}
+		if (!authData.user) {
+			return fail(500, { message: 'Benutzerdaten konnten nicht abgerufen werden.', error: true });
+		}
+
+		// Füge den vollen Namen in die 'profiles'-Tabelle ein
+		const { error: profileError } = await supabase
+			.from('profiles')
+			.update({ full_name: fullName })
+			.eq('id', authData.user.id);
+
+		if (profileError) {
+			return fail(500, { message: 'Profil konnte nicht aktualisiert werden: ' + profileError.message, error: true });
+		}
+
+		throw redirect(303, '/check-email');
 	}
 };
 
