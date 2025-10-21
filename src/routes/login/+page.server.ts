@@ -1,9 +1,8 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions } from './$types';
-import { supabase } from '$lib/supabaseClient';
 
 export const actions: Actions = {
-	default: async ({ request, cookies }) => {
+	default: async ({ request, cookies, locals }) => {
 		const data = await request.formData();
 		const email = data.get('email') as string;
 		const password = data.get('password') as string;
@@ -12,7 +11,8 @@ export const actions: Actions = {
 			return fail(400, { message: 'E-Mail und Passwort sind erforderlich.', error: true });
 		}
 
-		const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+		// KORREKTUR: Verwende den Supabase Client aus `locals`
+		const { data: authData, error: authError } = await locals.supabase.auth.signInWithPassword({
 			email,
 			password
 		});
