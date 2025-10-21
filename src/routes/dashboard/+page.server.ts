@@ -1,33 +1,44 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
-// Die `load`-Funktion holt die Daten, die NUR auf dieser spezifischen Seite angezeigt werden.
+// Die `load`-Funktion holt die Daten für die Dashboard-Seite.
 export const load: PageServerLoad = async ({ locals: { supabase, user } }) => {
-	// Wir können hier sicher sein, dass `user` existiert,
-	// weil unser "Wächter" (`+layout.server.ts`) uns bereits geschützt hat.
+	// **FINALE KORREKTUR: Paranoider Sicherheits-Check**
+	// Wir vertrauen nicht mehr nur dem Wächter, sondern prüfen hier erneut.
+	// Wenn kein Benutzer da ist, existiert die Seite für uns nicht.
+	if (!user) {
+		throw redirect(303, '/login');
+	}
+
+	// Lade die Klassen nur, wenn wir sicher einen Benutzer haben.
 	const { data: classes, error } = await supabase
 		.from('classes')
 		.select('*')
-		.eq('owner_id', user!.id); // Das ! sagt TypeScript: "Ich weiss sicher, dass user hier nicht null ist"
+		.eq('owner_id', user.id);
 
 	if (error) {
 		console.error('Fehler beim Laden der Klassen:', error);
-		return { classes: [] };
+		// Gib im Fehlerfall eine leere Liste zurück, um einen Absturz zu verhindern.
+		return { classes: [], user };
 	}
 
-	return { classes };
+	return { classes, user };
 };
 
 export const actions: Actions = {
-	// KORREKTUR: Die signOut-Methode von @supabase/ssr kümmert sich
-	// automatisch um das Löschen der Cookies. Wir müssen nichts mehr manuell tun.
+	// Die Logout-Funktion ist korrekt und bleibt unverändert.
 	logout: async ({ locals: { supabase } }) => {
 		await supabase.auth.signOut();
 		throw redirect(303, '/login');
 	},
 
-	// Die createClass-Funktion, die nun auch auf den `user` vom Wächter vertraut.
+	// Die createClass-Funktion ist korrekt und bleibt unverändert.
 	createClass: async ({ request, locals: { supabase, user } }) => {
+		// Auch hier fügen wir einen paranoiden Check hinzu.
+		if (!user) {
+			return fail(401, { error: true, message: 'Nicht autorisiert.' });
+		}
+
 		const formData = await request.formData();
 		const className = formData.get('className') as string;
 
@@ -39,7 +50,7 @@ export const actions: Actions = {
 
 		const { error } = await supabase.from('classes').insert({
 			name: className,
-			owner_id: user!.id,
+			owner_id: user.id,
 			class_code: classCode
 		});
 
