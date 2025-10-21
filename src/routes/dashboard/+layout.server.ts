@@ -1,20 +1,19 @@
-// Diese Layout-Datei agiert als Wächter für alle Seiten unter /dashboard.
-// Sie prüft vor dem Laden der Seite, ob ein Benutzer eingeloggt ist.
 import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 
-export const load: LayoutServerLoad = async ({ locals }) => {
-	// Prüfe, ob eine gültige Session vom Hook (hooks.server.ts) übergeben wurde.
-	const session = locals.session;
-
-	// Wenn keine Session existiert, leiten wir den Benutzer gnadenlos zur Login-Seite.
-	if (!session) {
+// Diese `load`-Funktion agiert als "Wächter" für alle Seiten
+// innerhalb des /dashboard-Verzeichnisses.
+export const load: LayoutServerLoad = async ({ locals: { user } }) => {
+	// Wenn `hooks.server.ts` keinen eingeloggten Benutzer findet...
+	if (!user) {
+		// ...leite den Benutzer sofort zur Login-Seite um.
+		// Das verhindert den 500-Error auf den Dashboard-Seiten.
 		throw redirect(303, '/login');
 	}
 
-	// Wenn eine Session existiert, geben wir die Benutzerdaten an die Seite weiter,
-	// damit wir sie anzeigen können (z.B. "Hallo, user@email.com").
+	// Wenn ein Benutzer da ist, geben wir ihn an die Seite weiter.
 	return {
-		user: session.user
+		user
 	};
 };
+
