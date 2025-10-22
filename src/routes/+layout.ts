@@ -9,7 +9,6 @@ export const load: LayoutLoad = async ({ fetch, data, depends }) => {
 	depends('supabase:auth');
 
 	// Initialisiert den Supabase-Client für den Browser.
-	// Die Cookie-Methoden sind wichtig für die automatische Verwaltung.
 	const supabase = createBrowserClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
 		global: {
 			fetch
@@ -26,21 +25,21 @@ export const load: LayoutLoad = async ({ fetch, data, depends }) => {
 			},
 			set(key, value, options) {
 				if (!isBrowser()) return;
-				document.cookie = serialize(key, value, { ...options, path: '/' }); // Path hinzugefügt
+				document.cookie = serialize(key, value, { ...options, path: '/' });
 			},
 			remove(key, options) {
 				if (!isBrowser()) return;
-				document.cookie = serialize(key, '', { ...options, path: '/', maxAge: -1 }); // Path hinzugefügt
+				document.cookie = serialize(key, '', { ...options, path: '/', maxAge: -1 });
 			}
 		}
 	});
 
-	// **FINALE KORREKTUR:** Wir holen die Session NICHT erneut im Browser-Layout.
 	// Wir verlassen uns auf `data.session`, das vom Server (`+layout.server.ts`) kommt.
 	const { session } = data;
 
-	// Gib den Client und die vom Server gelieferte Session weiter.
-	// Der 'user' wird daraus abgeleitet.
+	// **FINALE KORREKTUR V2:** Gib den Client und die vom Server gelieferte Session weiter.
+	// Der 'user' wird direkt aus der session abgeleitet.
+	// Die Klassenseite (`+page.svelte`) wird `data.user` verwenden.
 	return { supabase, session, user: session?.user ?? null };
 };
 
