@@ -12,20 +12,20 @@
 		"@sveltejs/kit": "^2.5.18",
 		"@sveltejs/vite-plugin-svelte": "^3.1.1",
 		"@tsconfig/svelte": "^5.0.4",
-		"autoprefixer": "^10.4.19", // NEU für Tailwind
-		"postcss": "^8.4.39",     // NEU für Tailwind
+		"autoprefixer": "^10.4.19",
+		"postcss": "^8.4.39",
 		"svelte": "^4.2.18",
-		"tailwindcss": "^3.4.6", // NEU für Tailwind
+		"tailwindcss": "^3.4.6",
 		"typescript": "^5.5.3",
-		"vite": "^5.3.3"         // Version aktualisiert in vorherigem Schritt
+		"vite": "^5.3.3"
 	},
 	"dependencies": {
-		"@supabase/ssr": "^0.4.0",     // Hinzugefügt in vorherigem Schritt
+		"@supabase/ssr": "^0.4.0", // Korrekter Schlüssel in Anführungszeichen
 		"@supabase/supabase-js": "^2.44.4"
 	},
 	"type": "module",
 	"engines": {
-		"node": "20.x"              // Hinzugefügt in vorherigem Schritt
+		"node": "20.x"
 	}
 }
 
