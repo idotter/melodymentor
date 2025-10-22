@@ -30,7 +30,7 @@
 	}
 
 	async function handleUpload(event: SubmitEvent) {
-		// ... (handleUpload bleibt unverändert) ...
+		// Upload-Logik (unverändert)
 		if (!supabase || !session || !user) { form = { error: true, message: 'Du musst eingeloggt sein.' }; return; }
 		isUploading = true; form = undefined;
 		const formData = new FormData(event.target as HTMLFormElement);
@@ -47,47 +47,34 @@
 
 	// Callback für das Bewertungsformular
 	const handleRatingResult: SubmitFunction = () => {
-		console.log('[handleRatingResult] Formular wird abgeschickt...');
-		return async ({ result }) => { // update entfernt
-			console.log('[handleRatingResult] Antwort vom Server erhalten:', result);
+		// Diese Funktion löst nur das Neuladen aus, die UI-Aktualisierung
+		// erfolgt durch den #key-Block und die $: Zuweisungen.
+		return async ({ result }) => {
 			if (result.type === 'success') {
-				console.log('[handleRatingResult] Server meldet Erfolg! Rufe invalidateAll() auf...');
 				await invalidateAll();
-				console.log('[handleRatingResult] invalidateAll() abgeschlossen.');
-
-				// **FINALE KORREKTUR V4:** Weise die `songs`-Variable explizit neu zu,
-				// nachdem die Daten neu geladen wurden. Das zwingt Svelte zur Aktualisierung.
-				// Wir greifen hier direkt auf die globale `data`-Variable zu,
-				// die von SvelteKit nach invalidateAll aktualisiert werden sollte.
-				// songs = data.songs; // Diese Zeile scheint nicht nötig, wenn $: songs = data.songs; oben steht. Testen wir ohne.
-
-				console.log('[handleRatingResult] UI sollte jetzt aktualisiert sein.');
-
-
 			} else {
-				console.error('[handleRatingResult] Server meldet Fehler:', result);
+				// Optional: Fehler im `form` speichern für Anzeige
 				if (result.type === 'failure' && result.data?.message) {
 					form = { error: true, message: result.data.message };
 				} else {
 					form = { error: true, message: 'Fehler beim Bewerten.' };
 				}
 			}
-			// Kein update() Aufruf mehr
 		};
 	};
 
 </script>
 
-<!-- Rest des HTML bleibt unverändert -->
+<!-- HTML-Teil beginnt hier -->
 
 <audio bind:this={audioPlayer} on:ended={() => (currentlyPlayingUrl = null)} />
 
 <div class="min-h-screen bg-gray-50 text-gray-800 font-sans selection:bg-pink-500 selection:text-white">
 	<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-10">
-		<!-- Header (unverändert) -->
+		<!-- Header -->
 		{#if classData}
 			<div class="relative bg-white p-6 sm:p-8 rounded-xl shadow-xl mb-10 overflow-hidden">
-				<!-- ... -->
+				<div class="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-pink-500 via-green-400 to-blue-400 opacity-10 blur-xl scale-110" />
 				<div class="relative z-10">
 					{#if user && !user.is_anonymous}
 						<a href="/dashboard" class="text-sm text-pink-600 hover:underline font-medium mb-2 inline-block">&larr; Zurück zum Dashboard</a>
@@ -110,51 +97,62 @@
 			<div class="lg:col-span-2">
 				<h2 class="text-2xl font-bold mb-6">Hitparade 🎵</h2>
 				<div class="space-y-4">
-					<!-- **WICHTIG:** Verwende die reaktive `songs`-Variable hier -->
-					{#if songs && songs.length > 0}
-						{#each songs as song, i (song.id)}
-							<div class="bg-white p-4 rounded-xl shadow-lg flex flex-col gap-3 border-l-4 border-pink-500 transform hover:-translate-y-1 hover:shadow-xl transition-all duration-200 ease-in-out">
-								<!-- Song-Infos & Player (unverändert) -->
-								<div class="flex items-center gap-4">
-									<!-- ... -->
-									<div class="text-3xl font-extrabold text-pink-500 w-10 text-center">{i + 1}.</div>
-									<button on:click={() => playSong(song.audio_url)} class="bg-pink-500 text-white p-4 rounded-full shadow-lg hover:scale-105 active:scale-95 transition-transform duration-200">
-										{#if currentlyPlayingUrl?.includes(song.audio_url)} <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="h-6 w-6"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg> {:else} <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="h-6 w-6"><path d="M8 5v14l11-7z"/></svg> {/if}
-									</button>
-									<div class="flex-grow min-w-0"> <h3 class="text-md sm:text-lg font-bold text-gray-900 leading-snug truncate" title={song.title}>{song.title}</h3> <p class="text-sm text-gray-600 font-medium mt-1 truncate" title={song.artist}>{song.artist}</p> </div>
-									{#if data.user?.id === data.classData?.owner_id} <form method="POST" action="?/deleteSong" use:enhance> <input type="hidden" name="songId" value={song.id} /> <input type="hidden" name="songPath" value={song.audio_url} /> <button type="submit" class="text-gray-400 hover:text-red-500 transition-colors transform hover:scale-110"> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg> </button> </form> {/if}
-								</div>
-								<!-- Bewertung -->
-								<div class="flex justify-between items-center mt-2 pt-3 border-t border-gray-100">
-									<div class="flex items-center gap-2">
-										<span class="font-bold text-lg text-yellow-500">★</span>
-										<span class="font-semibold text-gray-700">{(song.average_rating ?? 0).toFixed(1)}</span>
-										<span class="text-sm text-gray-500">/ 5.0</span>
+					<!-- #key Block zur Erzwingung der Reaktivität -->
+					{#key songs}
+						{#if songs && songs.length > 0}
+							{#each songs as song, i (song.id)}
+								<div class="bg-white p-4 rounded-xl shadow-lg flex flex-col gap-3 border-l-4 border-pink-500 transform hover:-translate-y-1 hover:shadow-xl transition-all duration-200 ease-in-out">
+									<!-- Song-Infos & Player -->
+									<div class="flex items-center gap-4">
+										<div class="text-3xl font-extrabold text-pink-500 w-10 text-center">{i + 1}.</div>
+										<button on:click={() => playSong(song.audio_url)} class="bg-pink-500 text-white p-4 rounded-full shadow-lg hover:scale-105 active:scale-95 transition-transform duration-200">
+											{#if currentlyPlayingUrl?.includes(song.audio_url)} <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="h-6 w-6"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg> {:else} <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="h-6 w-6"><path d="M8 5v14l11-7z"/></svg> {/if}
+										</button>
+										<div class="flex-grow min-w-0"> <h3 class="text-md sm:text-lg font-bold text-gray-900 leading-snug truncate" title={song.title}>{song.title}</h3> <p class="text-sm text-gray-600 font-medium mt-1 truncate" title={song.artist}>{song.artist}</p> </div>
+										<!-- Löschen-Button nur für Besitzer -->
+										{#if data.user?.id === data.classData?.owner_id}
+											<form method="POST" action="?/deleteSong" use:enhance>
+												<input type="hidden" name="songId" value={song.id} />
+												<input type="hidden" name="songPath" value={song.audio_url} />
+												<button type="submit" class="text-gray-400 hover:text-red-500 transition-colors transform hover:scale-110">
+													<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+												</button>
+											</form>
+										{/if}
 									</div>
-									<!-- use:enhance mit handleRatingResult verwenden -->
-									<form method="POST" action="?/rateSong" use:enhance={handleRatingResult} class="flex items-center gap-1">
-										<input type="hidden" name="songId" value={song.id} />
-										{#each { length: 5 } as _, starValue}
-											{@const rating = starValue + 1}
-											<button name="ratingValue" value={rating} class="text-2xl transition-transform hover:scale-125
-												{rating <= (song.user_rating ?? 0) ? 'text-yellow-400' : 'text-gray-300'}">
-												★
-											</button>
-										{/each}
-									</form>
+									<!-- Bewertung -->
+									<div class="flex justify-between items-center mt-2 pt-3 border-t border-gray-100">
+										<div class="flex items-center gap-2">
+											<span class="font-bold text-lg text-yellow-500">★</span>
+											<span class="font-semibold text-gray-700">{(song.average_rating ?? 0).toFixed(1)}</span>
+											<span class="text-sm text-gray-500">/ 5.0</span>
+										</div>
+										<!-- Bewertungsformular -->
+										<form method="POST" action="?/rateSong" use:enhance={handleRatingResult} class="flex items-center gap-1">
+											<input type="hidden" name="songId" value={song.id} />
+											{#each { length: 5 } as _, starValue}
+												{@const rating = starValue + 1}
+												<button name="ratingValue" value={rating} class="text-2xl transition-transform hover:scale-125
+													{rating <= (song.user_rating ?? 0) ? 'text-yellow-400' : 'text-gray-300'}">
+													★
+												</button>
+											{/each}
+										</form>
+									</div>
 								</div>
+							{/each}
+						{:else}
+							<div class="text-center py-10 px-6 bg-white rounded-xl shadow-md">
+								<p class="font-semibold text-gray-500">Noch keine Songs in dieser Klasse.</p>
 							</div>
-						{/each}
-					{:else}
-						<div class="text-center py-10 px-6 bg-white rounded-xl shadow-md"> <p class="font-semibold text-gray-500">Noch keine Songs in dieser Klasse.</p> </div>
-					{/if}
+						{/if}
+					{/key} <!-- Ende des #key Blocks -->
 				</div>
 			</div>
 
-			<!-- Rechte Spalte: Song hochladen (unverändert) -->
+			<!-- Rechte Spalte: Song hochladen (nur für eingeloggte Lehrer) -->
 			{#if data.user && !data.user.is_anonymous}
 				<div class="lg:col-span-1">
-					<!-- ... (Upload Formular unverändert) ... -->
 					<div class="bg-white p-6 rounded-xl shadow-lg sticky top-10">
 						<h2 class="text-2xl font-bold mb-4">Neuen Song hochladen</h2>
 						<form id="upload-form" on:submit|preventDefault={handleUpload} class="space-y-4">
