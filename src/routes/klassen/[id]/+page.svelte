@@ -32,15 +32,17 @@
 		}
 	}
 
-	// Manuelle Upload-Funktion (ohne Debugging-Logs)
+	// Manuelle Upload-Funktion mit detailliertem Frontend-Logging
 	async function handleUpload(event: SubmitEvent) {
+		console.log('[handleUpload] Gestartet');
 		if (!session) {
+			console.error('[handleUpload] Fehler: Nicht eingeloggt');
 			form = { error: true, message: 'Du musst eingeloggt sein, um hochzuladen.' };
 			return;
 		}
 
 		isUploading = true;
-		form = undefined; // Alte Fehler zurücksetzen
+		form = undefined;
 
 		const formData = new FormData(event.target as HTMLFormElement);
 		const audioFile = formData.get('audioFile') as File;
@@ -48,6 +50,7 @@
 		const artist = formData.get('artist') as string;
 
 		if (!title || !artist || !audioFile || !audioFile.size) {
+			console.error('[handleUpload] Fehler: Fehlende Daten');
 			form = { error: true, message: 'Alle Felder und eine Audio-Datei sind erforderlich.' };
 			isUploading = false;
 			return;
@@ -55,67 +58,98 @@
 
 		const sanitizedFileName = audioFile.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
 		const filePath = `${session.user.id}/${data.classData?.id}/${Date.now()}-${sanitizedFileName}`;
+		console.log('[handleUpload] Dateipfad:', filePath);
 
 		// 1. Direkter Upload
+		console.log('[handleUpload] Starte Storage Upload...');
 		const { error: uploadError } = await supabase.storage
 			.from('songs')
 			.upload(filePath, audioFile);
 
 		if (uploadError) {
+			console.error('[handleUpload] Storage Upload Error:', uploadError);
 			form = { error: true, message: 'Datei konnte nicht hochgeladen werden: ' + uploadError.message };
 			isUploading = false;
 			return;
 		}
+		console.log('[handleUpload] Storage Upload erfolgreich!');
 
 		// 2. Metadaten senden
 		const metadataForm = new FormData();
 		metadataForm.append('title', title);
 		metadataForm.append('artist', artist);
 		metadataForm.append('filePath', filePath);
+		console.log('[handleUpload] Sende Metadaten an "?/saveSongMetadata"...');
 
 		try {
 			const response = await fetch('?/saveSongMetadata', {
 				method: 'POST',
 				body: metadataForm
 			});
+			console.log('[handleUpload] Antwort vom Server:', response.status, response.statusText);
 
 			if (!response.ok) {
-				let errorMessage = 'Song konnte nicht in der DB gespeichert werden.';
-				try { const errorResult = await response.json(); errorMessage = errorResult.message || errorMessage; } catch (e) { /* ignore */ }
+				console.error('[handleUpload] Server-Antwort war NICHT ok:', response.status);
+				let errorMessage = 'Song konnte nicht in der DB gespeichert werden (Server-Fehler).';
+				try {
+					const errorResult = await response.json();
+					console.error('[handleUpload] Server Fehler-Body:', errorResult);
+					errorMessage = errorResult.message || errorMessage;
+				} catch (e) {
+					console.error('[handleUpload] Fehler beim Parsen der Fehler-Antwort:', e);
+				}
 				form = { error: true, message: errorMessage };
-				await supabase.storage.from('songs').remove([filePath]); // Cleanup bei Fehler
+				console.log('[handleUpload] Versuche Cleanup: Lösche Datei aus Storage...');
+				await supabase.storage.from('songs').remove([filePath]);
 			} else {
-				const result = await response.json();
-				if (result.success) {
-					invalidateAll(); // Daten neu laden bei Erfolg
+				// **DEBUGGING:** Was ist die Antwort genau?
+				let result;
+				try {
+					const responseText = await response.text(); // Lese als Text, falls JSON kaputt ist
+					console.log('[handleUpload] Server Erfolgs-Antwort (als Text):', responseText);
+					result = JSON.parse(responseText); // Versuche zu parsen
+					console.log('[handleUpload] Server Erfolgs-Antwort (geparst):', result);
+				} catch (e) {
+					console.error('[handleUpload] Fehler beim Parsen der Erfolgs-Antwort:', e);
+					form = { error: true, message: 'Fehler beim Verarbeiten der Server-Antwort.' };
+					isUploading = false;
+					return; // Breche hier ab, da wir die Antwort nicht verstehen
+				}
+
+				if (result && result.success) {
+					console.log('[handleUpload] Server meldet Erfolg! Lade Daten neu...');
+					invalidateAll();
 					(event.target as HTMLFormElement).reset();
 				} else {
-					form = { error: true, message: result.message || 'Song konnte nicht in der DB gespeichert werden.' };
-					await supabase.storage.from('songs').remove([filePath]); // Cleanup bei Fehler
+					console.error('[handleUpload] Server meldet KEINEN Erfolg:', result);
+					form = { error: true, message: (result && result.message) || 'Unbekannter Fehler nach DB-Speicherung.' };
+					console.log('[handleUpload] Versuche Cleanup: Lösche Datei aus Storage...');
+					await supabase.storage.from('songs').remove([filePath]);
 				}
 			}
 		} catch (fetchError) {
+			console.error('[handleUpload] Netzwerkfehler (fetch):', fetchError);
 			form = { error: true, message: 'Netzwerkfehler beim Speichern der Song-Details.' };
-			await supabase.storage.from('songs').remove([filePath]); // Cleanup bei Fehler
+			console.log('[handleUpload] Versuche Cleanup: Lösche Datei aus Storage...');
+			await supabase.storage.from('songs').remove([filePath]);
 		}
 
 		isUploading = false;
+		console.log('[handleUpload] Beendet');
 	}
 
-	// Dieser Block wird für andere Actions (Löschen, Bewerten) benötigt,
-	// die use:enhance verwenden und { success: true } zurückgeben.
+	// Dieser Block ist für andere Actions (Löschen, Bewerten)
 	$: if (form?.success) {
+		console.log("Form success detected (Delete/Rate?), invalidating data...");
 		invalidateAll();
-		form = undefined; // Formularstatus zurücksetzen
+		form = undefined;
 	}
 
-	// Initialisierung für reaktive Variablen in onMount, falls nötig
+
 	onMount(() => {
 		({ supabase, session, user } = data);
 	});
 </script>
-
-<!-- Der Rest des HTML bleibt unverändert -->
 
 <audio bind:this={audioPlayer} on:ended={() => (currentlyPlayingUrl = null)} />
 
@@ -136,12 +170,14 @@
 		{/if}
 
 		<div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
+			<!-- Linke Spalte: Hitparade -->
 			<div class="lg:col-span-2">
 				<h2 class="text-2xl font-bold mb-6">Hitparade 🎵</h2>
 				<div class="space-y-4">
 					{#if data.songs && data.songs.length > 0}
 						{#each data.songs as song, i (song.id)}
 							<div class="bg-white p-4 rounded-xl shadow-lg flex flex-col gap-3 border-l-4 border-pink-500 transform hover:-translate-y-1 hover:shadow-xl transition-all duration-200 ease-in-out">
+								<!-- Song-Infos & Player -->
 								<div class="flex items-center gap-4">
 									<div class="text-3xl font-extrabold text-pink-500 w-10 text-center">{i + 1}.</div>
 									<button on:click={() => playSong(song.audio_url)} class="bg-pink-500 text-white p-4 rounded-full shadow-lg hover:scale-105 active:scale-95 transition-transform duration-200">
@@ -155,14 +191,18 @@
 										<h3 class="text-lg font-bold text-gray-900 leading-snug">{song.title}</h3>
 										<p class="text-sm text-gray-600 font-medium mt-1">{song.artist}</p>
 									</div>
-									<form method="POST" action="?/deleteSong" use:enhance>
-										<input type="hidden" name="songId" value={song.id} />
-										<input type="hidden" name="songPath" value={song.audio_url} />
-										<button type="submit" class="text-gray-400 hover:text-red-500 transition-colors transform hover:scale-110">
-											<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
-										</button>
-									</form>
+									<!-- Nur der Besitzer der Klasse darf löschen -->
+									{#if data.user?.id === data.classData?.owner_id}
+										<form method="POST" action="?/deleteSong" use:enhance>
+											<input type="hidden" name="songId" value={song.id} />
+											<input type="hidden" name="songPath" value={song.audio_url} />
+											<button type="submit" class="text-gray-400 hover:text-red-500 transition-colors transform hover:scale-110">
+												<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+											</button>
+										</form>
+									{/if}
 								</div>
+								<!-- Bewertung -->
 								<div class="flex justify-between items-center mt-2 pt-3 border-t border-gray-100">
 									<div class="flex items-center gap-2">
 										<span class="font-bold text-lg text-yellow-500">★</span>
@@ -173,7 +213,7 @@
 										<input type="hidden" name="songId" value={song.id} />
 										{#each { length: 5 } as _, starValue}
 											{@const rating = starValue + 1}
-											<button name="ratingValue" value={rating} class="text-2xl transition-transform hover:scale-125 
+											<button name="ratingValue" value={rating} class="text-2xl transition-transform hover:scale-125
 												{rating <= (song.user_rating ?? 0) ? 'text-yellow-400' : 'text-gray-300'}">
 												★
 											</button>
@@ -189,7 +229,8 @@
 					{/if}
 				</div>
 			</div>
-			
+
+			<!-- Rechte Spalte: Song hochladen -->
 			<div class="lg:col-span-1">
 				<div class="bg-white p-6 rounded-xl shadow-lg sticky top-10">
 					<h2 class="text-2xl font-bold mb-4">Neuen Song hochladen</h2>
@@ -222,4 +263,11 @@
 		</div>
 	</div>
 </div>
+
+<style>
+	/* Kleine Stil-Verbesserung für den Play-Button */
+	button.playing svg {
+		/* Optional: Visuelles Feedback, dass dieser Song spielt */
+	}
+</style>
 
