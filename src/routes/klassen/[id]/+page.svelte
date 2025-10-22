@@ -195,7 +195,8 @@
 											<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="h-6 w-6"><path d="M8 5v14l11-7z"/></svg>
 										{/if}
 									</button>
-									<div class="flex-grow min-w-0"> <!-- Korrigierter Kommentar -->
+									<!-- KORRIGIERTER KOMMENTAR -->
+									<div class="flex-grow min-w-0"> <!-- Verhindert Überlaufen bei langen Titeln -->
 										<h3 class="text-md sm:text-lg font-bold text-gray-900 leading-snug truncate" title={song.title}>{song.title}</h3>
 										<p class="text-sm text-gray-600 font-medium mt-1 truncate" title={song.artist}>{song.artist}</p>
 									</div>
