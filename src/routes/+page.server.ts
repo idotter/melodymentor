@@ -7,18 +7,20 @@ export const load: PageServerLoad = async ({ locals: { user } }) => {
 	return { user };
 };
 
+// **WICHTIG:** Dieses `actions`-Objekt MUSS exportiert werden,
+// damit SvelteKit die `joinClass`-Action findet.
 export const actions: Actions = {
 	// Diese Action wird aufgerufen, wenn das Beitritts-Formular abgeschickt wird.
 	joinClass: async ({ request, locals: { supabase } }) => {
 		const formData = await request.formData();
-		const classCode = (formData.get('classCode') as string)?.toUpperCase().trim(); // Code in Grossbuchstaben umwandeln und Leerzeichen entfernen
+		// Stelle sicher, dass der Code in Grossbuchstaben umgewandelt und von Leerzeichen befreit wird
+		const classCode = (formData.get('classCode') as string)?.toUpperCase().trim();
 
 		if (!classCode) {
-			return fail(400, { error: true, message: 'Bitte gib einen Klassencode ein.' });
+			return fail(400, { error: true, message: 'Bitte gib einen Klassencode ein.', classCode });
 		}
 
 		// Suche in der Datenbank nach einer Klasse mit diesem Code.
-		// WICHTIG: Hierfür brauchen wir eine RLS-Policy, die das erlaubt!
 		const { data: classData, error } = await supabase
 			.from('classes')
 			.select('id') // Wir brauchen nur die ID für die Weiterleitung
@@ -27,10 +29,12 @@ export const actions: Actions = {
 
 		if (error || !classData) {
 			console.error('Fehler bei Klassensuche oder Code nicht gefunden:', error);
-			return fail(404, { error: true, message: 'Ungültiger Klassencode. Bitte überprüfe die Eingabe.' });
+			// Gib den eingegebenen Code zurück, damit das Formular ihn wieder anzeigen kann (optional)
+			return fail(404, { error: true, message: 'Ungültiger Klassencode. Bitte überprüfe die Eingabe.', classCode });
 		}
 
 		// Klasse gefunden! Leite den Schüler zur Klassen-Ansicht weiter.
 		throw redirect(303, `/klassen/${classData.id}`);
 	}
 };
+
