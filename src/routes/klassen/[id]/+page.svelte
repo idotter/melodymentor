@@ -32,7 +32,7 @@
 		}
 	}
 
-	// Manuelle Upload-Funktion mit detailliertem Frontend-Logging
+	// Manuelle Upload-Funktion mit korrigierter Erfolgsprüfung
 	async function handleUpload(event: SubmitEvent) {
 		console.log('[handleUpload] Gestartet');
 		if (!session) {
@@ -102,27 +102,34 @@
 				console.log('[handleUpload] Versuche Cleanup: Lösche Datei aus Storage...');
 				await supabase.storage.from('songs').remove([filePath]);
 			} else {
-				// **DEBUGGING:** Was ist die Antwort genau?
 				let result;
 				try {
-					const responseText = await response.text(); // Lese als Text, falls JSON kaputt ist
-					console.log('[handleUpload] Server Erfolgs-Antwort (als Text):', responseText);
-					result = JSON.parse(responseText); // Versuche zu parsen
+					result = await response.json(); // Standard JSON-Parsing
 					console.log('[handleUpload] Server Erfolgs-Antwort (geparst):', result);
 				} catch (e) {
 					console.error('[handleUpload] Fehler beim Parsen der Erfolgs-Antwort:', e);
 					form = { error: true, message: 'Fehler beim Verarbeiten der Server-Antwort.' };
 					isUploading = false;
-					return; // Breche hier ab, da wir die Antwort nicht verstehen
+					return;
 				}
 
-				if (result && result.success) {
+				// **FINALE KORREKTUR: Prüfe auf result.type === 'success'**
+				// Das ist die korrekte Art, die Antwort von SvelteKits fetch zu prüfen.
+				if (result && result.type === 'success') {
 					console.log('[handleUpload] Server meldet Erfolg! Lade Daten neu...');
 					invalidateAll();
 					(event.target as HTMLFormElement).reset();
 				} else {
-					console.error('[handleUpload] Server meldet KEINEN Erfolg:', result);
-					form = { error: true, message: (result && result.message) || 'Unbekannter Fehler nach DB-Speicherung.' };
+					// Fallback für unerwartete Erfolgsantworten oder wenn 'fail' zurückgegeben wurde
+					console.error('[handleUpload] Server meldet KEINEN Erfolg oder unerwartete Antwort:', result);
+					let errorMessage = 'Unbekannter Fehler nach DB-Speicherung.';
+					// Versuche, die Fehlermeldung aus der fail()-Antwort zu extrahieren
+					if (result && result.type === 'failure' && result.data?.message) {
+						errorMessage = result.data.message;
+					} else if (result && result.message) {
+						errorMessage = result.message;
+					}
+					form = { error: true, message: errorMessage };
 					console.log('[handleUpload] Versuche Cleanup: Lösche Datei aus Storage...');
 					await supabase.storage.from('songs').remove([filePath]);
 				}
@@ -150,6 +157,8 @@
 		({ supabase, session, user } = data);
 	});
 </script>
+
+<!-- Der Rest des HTML bleibt unverändert -->
 
 <audio bind:this={audioPlayer} on:ended={() => (currentlyPlayingUrl = null)} />
 
