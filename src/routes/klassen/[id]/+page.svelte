@@ -35,28 +35,44 @@
 		isUploading = false;
 	}
 
-	// **FINALE KORREKTUR für Rating-Aktualisierung:**
-	// Wir verwenden die `result`-Callback von `use:enhance`
+	// Callback für das Bewertungsformular
 	const handleRatingResult: SubmitFunction = () => {
+		// **DEBUGGING START**
+		console.log('[handleRatingResult] Formular wird abgeschickt...');
+		// **DEBUGGING ENDE**
 		return async ({ result, update }) => {
+			// **DEBUGGING START**
+			console.log('[handleRatingResult] Antwort vom Server erhalten:', result);
+			// **DEBUGGING ENDE**
+
 			// Prüfe, ob die Server-Action erfolgreich war (Typ 'success')
 			if (result.type === 'success') {
+				// **DEBUGGING START**
+				console.log('[handleRatingResult] Server meldet Erfolg! Rufe invalidateAll() auf...');
+				// **DEBUGGING ENDE**
 				// Wenn ja, lade alle Daten neu, um die Änderungen anzuzeigen
 				await invalidateAll();
+				// **DEBUGGING START**
+				console.log('[handleRatingResult] invalidateAll() abgeschlossen.');
+				// **DEBUGGING ENDE**
+			} else {
+				// **DEBUGGING START**
+				console.error('[handleRatingResult] Server meldet Fehler:', result);
+				// Optional: Fehlermeldung anzeigen
+				if (result.type === 'failure' && result.data?.message) {
+					form = { error: true, message: result.data.message };
+				} else {
+					form = { error: true, message: 'Fehler beim Bewerten.' };
+				}
+				// **DEBUGGING ENDE**
 			}
 			// `update()` wird hier nicht benötigt, da invalidateAll() die Seite neu lädt
 		};
 	};
 
-	// **ENTFERNT:** Der $: Block ist nicht mehr nötig für die Rating-Aktualisierung.
-	// Er kann bleiben, falls wir ihn für andere enhance-Formulare (z.B. deleteSong) brauchen würden,
-	// aber handleRatingResult ist spezifischer und robuster.
-	// $: if (form?.success) {
-	// 	invalidateAll();
-	// 	form = undefined;
-	// }
-
 </script>
+
+<!-- Rest des Codes bleibt unverändert -->
 
 <audio bind:this={audioPlayer} on:ended={() => (currentlyPlayingUrl = null)} />
 
@@ -108,7 +124,7 @@
 										<span class="font-semibold text-gray-700">{(song.average_rating ?? 0).toFixed(1)}</span>
 										<span class="text-sm text-gray-500">/ 5.0</span>
 									</div>
-									<!-- **KORREKTUR: use:enhance mit handleRatingResult verwenden** -->
+									<!-- use:enhance mit handleRatingResult verwenden -->
 									<form method="POST" action="?/rateSong" use:enhance={handleRatingResult} class="flex items-center gap-1">
 										<input type="hidden" name="songId" value={song.id} />
 										{#each { length: 5 } as _, starValue}
@@ -132,6 +148,16 @@
 			{#if data.user && !data.user.is_anonymous}
 				<div class="lg:col-span-1">
 					<!-- ... (Upload Formular unverändert) ... -->
+					<div class="bg-white p-6 rounded-xl shadow-lg sticky top-10">
+						<h2 class="text-2xl font-bold mb-4">Neuen Song hochladen</h2>
+						<form id="upload-form" on:submit|preventDefault={handleUpload} class="space-y-4">
+							<div> <label for="title" class="block text-sm font-medium text-gray-700">Song-Titel</label> <input type="text" name="title" id="title" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-pink-500 focus:border-pink-500" /> </div>
+							<div> <label for="artist" class="block text-sm font-medium text-gray-700">Interpret</label> <input type="text" name="artist" id="artist" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-pink-500 focus:border-pink-500" /> </div>
+							<div> <label for="audioFile" class="block text-sm font-medium text-gray-700">Audio-Datei (MP3)</label> <input type="file" name="audioFile" id="audioFile" required accept=".mp3" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100" /> </div>
+							<button type="submit" disabled={isUploading} class="w-full bg-pink-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-pink-700 transition-colors shadow-lg disabled:bg-gray-400 disabled:cursor-not-allowed"> {#if isUploading} <span>Wird hochgeladen...</span> {:else} <span>Hochladen</span> {/if} </button>
+							{#if form?.error && form?.message} <p class="text-red-500 text-sm mt-2">{form.message}</p> {/if}
+						</form>
+					</div>
 				</div>
 			{/if}
 		</div>
