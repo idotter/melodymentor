@@ -2,14 +2,14 @@
 <script lang="ts">
 	import type { PageData, ActionData } from './$types';
 	import { invalidateAll } from '$app/navigation';
-	import { onMount } from 'svelte'; // onMount hinzugefügt
+	import { onMount } from 'svelte';
 
 	export let data: PageData;
+	// Die 'form'-Variable wird nur noch für Fehleranzeige ODER *andere* Actions (Löschen, Bewerten) benötigt
 	export let form: ActionData;
 
-	// **NEU:** Wir holen supabase und session direkt aus data
 	let { supabase, session } = data;
-	$: ({ supabase, session } = data); // Reaktiv, falls sich Session ändert
+	$: ({ supabase, session } = data);
 
 	let currentlyPlayingUrl: string | null = null;
 	let audioPlayer: HTMLAudioElement;
@@ -18,7 +18,7 @@
 	function playSong(path: string) {
 		const {
 			data: { publicUrl }
-		} = supabase.storage.from('songs').getPublicUrl(path); // Verwende supabase hier
+		} = supabase.storage.from('songs').getPublicUrl(path);
 
 		if (audioPlayer && currentlyPlayingUrl === publicUrl) {
 			audioPlayer.pause();
@@ -33,7 +33,7 @@
 
 	// Manuelle Upload-Funktion
 	async function handleUpload(event: SubmitEvent) {
-		if (!session) { // Sicherheitscheck: Nur hochladen, wenn eingeloggt
+		if (!session) {
 			form = { error: true, message: 'Du musst eingeloggt sein, um hochzuladen.' };
 			return;
 		}
@@ -55,8 +55,8 @@
 		const sanitizedFileName = audioFile.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
 		const filePath = `${session.user.id}/${data.classData?.id}/${Date.now()}-${sanitizedFileName}`;
 
-		// 1. Direkter Upload vom Browser zu Supabase Storage
-		const { error: uploadError } = await supabase.storage // Verwende supabase hier
+		// 1. Direkter Upload
+		const { error: uploadError } = await supabase.storage
 			.from('songs')
 			.upload(filePath, audioFile);
 
@@ -66,33 +66,28 @@
 			return;
 		}
 
-		// 2. Sende NUR die Metadaten an unsere Server-Action
+		// 2. Metadaten senden
 		const metadataForm = new FormData();
 		metadataForm.append('title', title);
 		metadataForm.append('artist', artist);
 		metadataForm.append('filePath', filePath);
 
-		// **HIER IST DIE ENTSCHEIDENDE ÄNDERUNG:**
-		// SvelteKit's `fetch` leitet Cookies automatisch weiter, wenn es direkt
-		// verwendet wird. Wir brauchen KEINE manuellen Header.
 		const response = await fetch('?/saveSongMetadata', {
 			method: 'POST',
 			body: metadataForm
 		});
 
-		// Verarbeitung der Antwort (bleibt gleich)
+		// Verarbeitung der Antwort
 		if (!response.ok) {
-			// Versuche, eine Fehlermeldung aus der Antwort zu extrahieren
 			let errorMessage = 'Song konnte nicht in der DB gespeichert werden.';
-			try {
-				const errorResult = await response.json();
-				errorMessage = errorResult.message || errorMessage;
-			} catch (e) { /* Ignoriere JSON-Parsing-Fehler */ }
+			try { const errorResult = await response.json(); errorMessage = errorResult.message || errorMessage; } catch (e) { /* ignore */ }
 			form = { error: true, message: errorMessage };
 			await supabase.storage.from('songs').remove([filePath]);
 		} else {
 			const result = await response.json();
 			if (result.success) {
+				// **KORREKTUR: invalidateAll() HIER aufrufen**
+				// Da der DB-Eintrag erfolgreich war, laden wir die Daten neu.
 				invalidateAll();
 				(event.target as HTMLFormElement).reset();
 			} else {
@@ -104,13 +99,16 @@
 		isUploading = false;
 	}
 
-	// Wenn eine Bewertung oder Löschung erfolgreich war, laden wir die Daten neu.
-	$: if (form?.success && !isUploading) {
+	// **KORREKTUR: Dieser Block wird NICHT MEHR für den Upload benötigt.**
+	// Er wird nur noch für andere Actions (Löschen, Bewerten) getriggert,
+	// falls diese `use:enhance` verwenden und `{ success: true }` zurückgeben.
+	$: if (form?.success) {
+		console.log("Form success detected, invalidating data..."); // Debugging
 		invalidateAll();
 		form = undefined;
 	}
 
-	// Initialisierung für reaktive Variablen
+
 	onMount(() => {
 		({ supabase, session } = data);
 	});
