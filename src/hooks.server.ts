@@ -3,8 +3,7 @@ import { createServerClient } from '@supabase/ssr';
 import type { Handle } from '@sveltejs/kit';
 
 export const handle: Handle = async ({ event, resolve }) => {
-	// Erstelle einen Supabase-Client für den Server, der Cookies verwalten kann.
-	// Dieser wird für jede Anfrage neu erstellt und ist über `event.locals.supabase` verfügbar.
+	// Erstelle einen Supabase-Client für den Server, der Cookies verwalten kann
 	event.locals.supabase = createServerClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
 		cookies: {
 			get: (key) => event.cookies.get(key),
@@ -17,20 +16,31 @@ export const handle: Handle = async ({ event, resolve }) => {
 		}
 	});
 
-	// Hole die Benutzerdaten aus der Session.
+	// **FINALE KORREKTUR: Verwende getUser() statt getSession()**
+	// getUser() holt die Benutzerdaten und validiert sie gegen den Supabase Auth Server.
+	// Das ist die sichere und empfohlene Methode.
+	const {
+		data: { user } // Wir holen direkt den `user`
+	} = await event.locals.supabase.auth.getUser();
+
+	// Wir speichern den (authentifizierten) Benutzer in `locals`
+	event.locals.user = user;
+
+	// Wir holen die Session separat, falls wir sie später brauchen (z.B. für RLS, obwohl getUser() meist reicht)
 	const {
 		data: { session }
-	} = await event.locals.supabase.auth.getSession();
-
-	// Mache den Benutzer und die Session in `event.locals` für alle Server-Routen verfügbar.
-	event.locals.user = session?.user ?? null;
+	} = await event.locals.supabase.auth.getSession(); // getSession ist hier ok, da wir den User schon haben
 	event.locals.session = session;
 
-	// Filtere Header, um Warnungen zu vermeiden (Standard-Vorgehen).
-	return resolve(event, {
+
+	// Lade die angeforderte Seite
+	const response = await resolve(event, {
 		filterSerializedResponseHeaders(name) {
-			return name === 'content-range';
+			// Supabase SSR braucht dies, um korrekt zu funktionieren
+			return name === 'content-range' || name === 'x-supabase-api-version';
 		}
 	});
+
+	return response;
 };
 
