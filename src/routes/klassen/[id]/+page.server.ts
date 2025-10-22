@@ -1,4 +1,4 @@
-import { error as svelteError, fail, json } from '@sveltejs/kit';
+import { error as svelteError, fail } from '@sveltejs/kit'; // json entfernt
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, locals: { supabase, user } }) => {
@@ -31,12 +31,11 @@ export const load: PageServerLoad = async ({ params, locals: { supabase, user } 
 
 export const actions: Actions = {
 	saveSongMetadata: async ({ request, locals: { supabase, user }, params }) => {
-		// **DEBUGGING START**
 		console.log('--- saveSongMetadata Action gestartet ---');
 		if (!user) {
 			console.error('[saveSongMetadata] FEHLER: Kein Benutzer in locals gefunden!');
-			// Verwende json() statt fail() für fetch-Antworten
-			return json({ success: false, message: 'Nicht autorisiert.' }, { status: 401 });
+			// **KORREKTUR:** fail() verwenden für Formularfehler
+			return fail(401, { message: 'Nicht autorisiert.', error: true });
 		} else {
 			console.log('[saveSongMetadata] Benutzer-ID aus locals:', user.id);
 		}
@@ -49,19 +48,17 @@ export const actions: Actions = {
 		const artist = formData.get('artist') as string;
 		const filePath = formData.get('filePath') as string;
 		console.log('[saveSongMetadata] Empfangene Metadaten:', { title, artist, filePath });
-		// **DEBUGGING ENDE**
 
 
 		if (!title || !artist || !filePath) {
 			console.error('[saveSongMetadata] FEHLER: Fehlende Metadaten.');
-			return json({ success: false, message: 'Fehlende Metadaten.' }, { status: 400 });
+			// **KORREKTUR:** fail() verwenden für Formularfehler
+			return fail(400, { message: 'Fehlende Metadaten.', error: true });
 		}
 
-		// **DEBUGGING:** Gib die Daten aus, die wir einfügen wollen
 		const insertData = {
 			title,
 			artist,
-			// Stelle sicher, dass classId eine Zahl ist, falls die DB das erwartet
 			class_id: parseInt(classId, 10),
 			audio_url: filePath,
 			uploader_info: user.email,
@@ -73,22 +70,22 @@ export const actions: Actions = {
 		const { error: dbError } = await supabase.from('songs').insert(insertData);
 
 		if (dbError) {
-			// **DEBUGGING:** Gib den genauen DB-Fehler aus
 			console.error('[saveSongMetadata] Supabase DB Insert Error:', dbError);
-			// Gib den spezifischen Fehler zurück
-			return json({ success: false, message: `Song DB Error: ${dbError.message}` }, { status: 500 });
+			// **KORREKTUR:** fail() verwenden für Formularfehler
+			return fail(500, { message: `Song DB Error: ${dbError.message}`, error: true });
 		}
 
 		console.log('[saveSongMetadata] Song erfolgreich in DB gespeichert!');
-		return json({ success: true });
+		// **KORREKTUR:** Einfaches Objekt zurückgeben, nicht json()
+		return { success: true };
 	},
 
-	// deleteSong (bleibt unverändert)
+	// deleteSong (bleibt unverändert, verwendet bereits fail() und {success: true})
 	deleteSong: async ({ request, locals: { supabase, user } }) => {
 		// ... (Code unverändert) ...
 	},
 
-	// rateSong (bleibt unverändert)
+	// rateSong (bleibt unverändert, verwendet bereits fail() und {success: true})
 	rateSong: async ({ request, locals: { supabase, user } }) => {
 		// ... (Code unverändert) ...
 	}
