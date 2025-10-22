@@ -3,18 +3,19 @@
 	import type { PageData, ActionData, SubmitFunction } from './$types';
 	import { invalidateAll } from '$app/navigation';
 	import { enhance } from '$app/forms';
-	import { onMount } from 'svelte'; // onMount hinzugefügt für Initialisierung
 
 	export let data: PageData;
 	export let form: ActionData;
 
-	// Supabase Client und Session/User-Daten direkt aus 'data' verwenden
-	// $: sorgt für Reaktivität, wenn sich 'data' nach invalidateAll ändert
+	// $: sorgt für Reaktivität, wenn sich `data` nach invalidateAll ändert
 	$: supabase = data.supabase;
 	$: session = data.session;
 	$: user = data.user;
 	$: classData = data.classData;
-	$: songs = data.songs;
+	// **WICHTIG:** Wir brauchen eine separate Variable für Sveltes Reaktivität in der Schleife
+	let songs = data.songs;
+	$: songs = data.songs; // Stelle sicher, dass `songs` aktualisiert wird, wenn `data.songs` sich ändert
+
 
 	let currentlyPlayingUrl: string | null = null;
 	let audioPlayer: HTMLAudioElement;
@@ -47,21 +48,20 @@
 	// Callback für das Bewertungsformular
 	const handleRatingResult: SubmitFunction = () => {
 		console.log('[handleRatingResult] Formular wird abgeschickt...');
-		return async ({ result, update }) => {
+		return async ({ result }) => { // update entfernt
 			console.log('[handleRatingResult] Antwort vom Server erhalten:', result);
 			if (result.type === 'success') {
 				console.log('[handleRatingResult] Server meldet Erfolg! Rufe invalidateAll() auf...');
-				// await invalidateAll(); // invalidateAll wird aufgerufen
+				await invalidateAll();
 				console.log('[handleRatingResult] invalidateAll() abgeschlossen.');
-				// **NEU:** Explizite Neuzuweisung von data nach kurzer Verzögerung,
-				// um Svelte Zeit für die Aktualisierung zu geben (Workaround).
-				// update(); // update() KÖNNTE hier helfen, probieren wir es aus.
-				await invalidateAll().then(() => {
-					// Manchmal braucht Svelte nach invalidateAll eine explizite Bestätigung.
-					// Diese Zeile ist technisch redundant, kann aber Reaktivitätsprobleme lösen.
-					data = data;
-					console.log('[handleRatingResult] data neu zugewiesen.');
-				});
+
+				// **FINALE KORREKTUR V4:** Weise die `songs`-Variable explizit neu zu,
+				// nachdem die Daten neu geladen wurden. Das zwingt Svelte zur Aktualisierung.
+				// Wir greifen hier direkt auf die globale `data`-Variable zu,
+				// die von SvelteKit nach invalidateAll aktualisiert werden sollte.
+				// songs = data.songs; // Diese Zeile scheint nicht nötig, wenn $: songs = data.songs; oben steht. Testen wir ohne.
+
+				console.log('[handleRatingResult] UI sollte jetzt aktualisiert sein.');
 
 
 			} else {
@@ -72,13 +72,9 @@
 					form = { error: true, message: 'Fehler beim Bewerten.' };
 				}
 			}
-			// update() ist Teil von enhance und KANN helfen, die UI zu aktualisieren,
-			// auch wenn invalidateAll() die Hauptarbeit macht.
-			update({ reset: false }); // reset: false, damit Formularwerte nicht gelöscht werden
+			// Kein update() Aufruf mehr
 		};
 	};
-
-	// **ENTFERNT:** Der $: Block für form.success ist nicht mehr nötig.
 
 </script>
 
@@ -89,20 +85,20 @@
 <div class="min-h-screen bg-gray-50 text-gray-800 font-sans selection:bg-pink-500 selection:text-white">
 	<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-10">
 		<!-- Header (unverändert) -->
-		{#if data.classData}
+		{#if classData}
 			<div class="relative bg-white p-6 sm:p-8 rounded-xl shadow-xl mb-10 overflow-hidden">
 				<!-- ... -->
 				<div class="relative z-10">
-					{#if data.user && !data.user.is_anonymous}
+					{#if user && !user.is_anonymous}
 						<a href="/dashboard" class="text-sm text-pink-600 hover:underline font-medium mb-2 inline-block">&larr; Zurück zum Dashboard</a>
 					{:else}
 						<a href="/" class="text-sm text-pink-600 hover:underline font-medium mb-2 inline-block">&larr; Neue Klasse beitreten</a>
 					{/if}
-					<h1 class="text-4xl font-extrabold text-gray-900 leading-tight">{data.classData.name}</h1>
-					{#if data.user && !data.user.is_anonymous}
+					<h1 class="text-4xl font-extrabold text-gray-900 leading-tight">{classData.name}</h1>
+					{#if user && !user.is_anonymous}
 						<div class="mt-4 bg-gray-100 border-2 border-dashed border-gray-200 rounded-lg p-3 inline-flex items-center gap-3">
 							<span class="text-xs text-gray-500 font-semibold uppercase">Klassencode zum Teilen:</span>
-							<p class="font-mono text-xl font-extrabold text-gray-800 tracking-wider">{data.classData.class_code}</p>
+							<p class="font-mono text-xl font-extrabold text-gray-800 tracking-wider">{classData.class_code}</p>
 						</div>
 					{/if}
 				</div>
@@ -114,8 +110,9 @@
 			<div class="lg:col-span-2">
 				<h2 class="text-2xl font-bold mb-6">Hitparade 🎵</h2>
 				<div class="space-y-4">
-					{#if data.songs && data.songs.length > 0}
-						{#each data.songs as song, i (song.id)}
+					<!-- **WICHTIG:** Verwende die reaktive `songs`-Variable hier -->
+					{#if songs && songs.length > 0}
+						{#each songs as song, i (song.id)}
 							<div class="bg-white p-4 rounded-xl shadow-lg flex flex-col gap-3 border-l-4 border-pink-500 transform hover:-translate-y-1 hover:shadow-xl transition-all duration-200 ease-in-out">
 								<!-- Song-Infos & Player (unverändert) -->
 								<div class="flex items-center gap-4">
