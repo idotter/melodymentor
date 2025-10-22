@@ -1,37 +1,46 @@
 <!-- Behebt das RLS-Problem, indem der fetch-Aufruf korrekt authentifiziert wird -->
 <script lang="ts">
-	import type { PageData, ActionData, SubmitFunction } from './$types'; // SubmitFunction hinzugefügt
+	import type { PageData, ActionData, SubmitFunction } from './$types';
 	import { invalidateAll } from '$app/navigation';
 	import { enhance } from '$app/forms';
+	import { onMount } from 'svelte'; // onMount hinzugefügt für Initialisierung
 
 	export let data: PageData;
 	export let form: ActionData;
+
+	// Supabase Client und Session/User-Daten direkt aus 'data' verwenden
+	// $: sorgt für Reaktivität, wenn sich 'data' nach invalidateAll ändert
+	$: supabase = data.supabase;
+	$: session = data.session;
+	$: user = data.user;
+	$: classData = data.classData;
+	$: songs = data.songs;
 
 	let currentlyPlayingUrl: string | null = null;
 	let audioPlayer: HTMLAudioElement;
 	let isUploading = false;
 
 	function playSong(path: string) {
-		if (!data.supabase) return;
+		if (!supabase) return;
 		const {
 			data: { publicUrl }
-		} = data.supabase.storage.from('songs').getPublicUrl(path);
+		} = supabase.storage.from('songs').getPublicUrl(path);
 		if (audioPlayer && currentlyPlayingUrl === publicUrl) { audioPlayer.pause(); currentlyPlayingUrl = null; } else { if (audioPlayer) audioPlayer.pause(); audioPlayer.src = publicUrl; audioPlayer.play(); currentlyPlayingUrl = publicUrl; }
 	}
 
 	async function handleUpload(event: SubmitEvent) {
 		// ... (handleUpload bleibt unverändert) ...
-		if (!data.supabase || !data.session || !data.user) { form = { error: true, message: 'Du musst eingeloggt sein.' }; return; }
+		if (!supabase || !session || !user) { form = { error: true, message: 'Du musst eingeloggt sein.' }; return; }
 		isUploading = true; form = undefined;
 		const formData = new FormData(event.target as HTMLFormElement);
 		const audioFile = formData.get('audioFile') as File; const title = formData.get('title') as string; const artist = formData.get('artist') as string;
 		if (!title || !artist || !audioFile || !audioFile.size) { form = { error: true, message: 'Alle Felder und Datei erforderlich.' }; isUploading = false; return; }
 		const sanitizedFileName = audioFile.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-		const filePath = `${data.user.id}/${data.classData?.id}/${Date.now()}-${sanitizedFileName}`;
-		const { error: uploadError } = await data.supabase.storage.from('songs').upload(filePath, audioFile);
+		const filePath = `${user.id}/${classData?.id}/${Date.now()}-${sanitizedFileName}`;
+		const { error: uploadError } = await supabase.storage.from('songs').upload(filePath, audioFile);
 		if (uploadError) { form = { error: true, message: 'Upload Error: ' + uploadError.message }; isUploading = false; return; }
 		const metadataForm = new FormData(); metadataForm.append('title', title); metadataForm.append('artist', artist); metadataForm.append('filePath', filePath);
-		try { const response = await fetch('?/saveSongMetadata', { method: 'POST', body: metadataForm }); if (!response.ok) { let errorMessage = 'DB Error.'; try { const errorResult = await response.json(); errorMessage = errorResult.message || errorMessage; } catch (e) {} form = { error: true, message: errorMessage }; await data.supabase.storage.from('songs').remove([filePath]); } else { const result = await response.json(); if (result?.type === 'success') { invalidateAll(); (event.target as HTMLFormElement).reset(); } else { let errorMessage = 'Unbekannter DB Fehler.'; if (result?.type === 'failure' && result.data?.message) errorMessage = result.data.message; else if (result?.message) errorMessage = result.message; form = { error: true, message: errorMessage }; await data.supabase.storage.from('songs').remove([filePath]); } } } catch (fetchError) { form = { error: true, message: 'Netzwerkfehler.' }; await data.supabase.storage.from('songs').remove([filePath]); }
+		try { const response = await fetch('?/saveSongMetadata', { method: 'POST', body: metadataForm }); if (!response.ok) { let errorMessage = 'DB Error.'; try { const errorResult = await response.json(); errorMessage = errorResult.message || errorMessage; } catch (e) {} form = { error: true, message: errorMessage }; await supabase.storage.from('songs').remove([filePath]); } else { const result = await response.json(); if (result?.type === 'success') { invalidateAll(); (event.target as HTMLFormElement).reset(); } else { let errorMessage = 'Unbekannter DB Fehler.'; if (result?.type === 'failure' && result.data?.message) errorMessage = result.data.message; else if (result?.message) errorMessage = result.message; form = { error: true, message: errorMessage }; await supabase.storage.from('songs').remove([filePath]); } } } catch (fetchError) { form = { error: true, message: 'Netzwerkfehler.' }; await supabase.storage.from('songs').remove([filePath]); }
 		isUploading = false;
 	}
 
@@ -42,9 +51,19 @@
 			console.log('[handleRatingResult] Antwort vom Server erhalten:', result);
 			if (result.type === 'success') {
 				console.log('[handleRatingResult] Server meldet Erfolg! Rufe invalidateAll() auf...');
-				// WICHTIG: invalidateAll() sollte SvelteKit anweisen, die `load` Funktionen neu auszuführen
-				await invalidateAll();
+				// await invalidateAll(); // invalidateAll wird aufgerufen
 				console.log('[handleRatingResult] invalidateAll() abgeschlossen.');
+				// **NEU:** Explizite Neuzuweisung von data nach kurzer Verzögerung,
+				// um Svelte Zeit für die Aktualisierung zu geben (Workaround).
+				// update(); // update() KÖNNTE hier helfen, probieren wir es aus.
+				await invalidateAll().then(() => {
+					// Manchmal braucht Svelte nach invalidateAll eine explizite Bestätigung.
+					// Diese Zeile ist technisch redundant, kann aber Reaktivitätsprobleme lösen.
+					data = data;
+					console.log('[handleRatingResult] data neu zugewiesen.');
+				});
+
+
 			} else {
 				console.error('[handleRatingResult] Server meldet Fehler:', result);
 				if (result.type === 'failure' && result.data?.message) {
@@ -53,13 +72,17 @@
 					form = { error: true, message: 'Fehler beim Bewerten.' };
 				}
 			}
-			// Wir rufen update() nicht auf, da invalidateAll ausreichen sollte
+			// update() ist Teil von enhance und KANN helfen, die UI zu aktualisieren,
+			// auch wenn invalidateAll() die Hauptarbeit macht.
+			update({ reset: false }); // reset: false, damit Formularwerte nicht gelöscht werden
 		};
 	};
 
+	// **ENTFERNT:** Der $: Block für form.success ist nicht mehr nötig.
+
 </script>
 
-<!-- Rest des Codes bleibt unverändert -->
+<!-- Rest des HTML bleibt unverändert -->
 
 <audio bind:this={audioPlayer} on:ended={() => (currentlyPlayingUrl = null)} />
 
@@ -93,9 +116,6 @@
 				<div class="space-y-4">
 					{#if data.songs && data.songs.length > 0}
 						{#each data.songs as song, i (song.id)}
-							<!-- **DEBUGGING START:** Gib user_rating direkt aus -->
-							<!-- <pre>DEBUG: Song {song.id}, User Rating: {song.user_rating ?? 'null'}</pre> -->
-							<!-- **DEBUGGING ENDE:** Kommentar entfernen zum Testen -->
 							<div class="bg-white p-4 rounded-xl shadow-lg flex flex-col gap-3 border-l-4 border-pink-500 transform hover:-translate-y-1 hover:shadow-xl transition-all duration-200 ease-in-out">
 								<!-- Song-Infos & Player (unverändert) -->
 								<div class="flex items-center gap-4">
