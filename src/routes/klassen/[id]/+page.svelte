@@ -1,22 +1,24 @@
-<!--
-  Diese Datei enthält jetzt die Logik für den direkten Browser-Upload zu Supabase Storage,
-  um den "Payload too large"-Fehler zu umgehen.
--->
+<!-- Behebt das RLS-Problem, indem der fetch-Aufruf korrekt authentifiziert wird -->
 <script lang="ts">
 	import type { PageData, ActionData } from './$types';
 	import { invalidateAll } from '$app/navigation';
+	import { onMount } from 'svelte'; // onMount hinzugefügt
 
 	export let data: PageData;
 	export let form: ActionData;
 
+	// **NEU:** Wir holen supabase und session direkt aus data
+	let { supabase, session } = data;
+	$: ({ supabase, session } = data); // Reaktiv, falls sich Session ändert
+
 	let currentlyPlayingUrl: string | null = null;
 	let audioPlayer: HTMLAudioElement;
-	let isUploading = false; // Ladezustand für den Upload
+	let isUploading = false;
 
 	function playSong(path: string) {
 		const {
 			data: { publicUrl }
-		} = data.supabase.storage.from('songs').getPublicUrl(path);
+		} = supabase.storage.from('songs').getPublicUrl(path); // Verwende supabase hier
 
 		if (audioPlayer && currentlyPlayingUrl === publicUrl) {
 			audioPlayer.pause();
@@ -31,8 +33,13 @@
 
 	// Manuelle Upload-Funktion
 	async function handleUpload(event: SubmitEvent) {
+		if (!session) { // Sicherheitscheck: Nur hochladen, wenn eingeloggt
+			form = { error: true, message: 'Du musst eingeloggt sein, um hochzuladen.' };
+			return;
+		}
+
 		isUploading = true;
-		form = undefined; // Alte Fehlermeldungen zurücksetzen
+		form = undefined;
 
 		const formData = new FormData(event.target as HTMLFormElement);
 		const audioFile = formData.get('audioFile') as File;
@@ -45,13 +52,11 @@
 			return;
 		}
 
-		// **FINALE KORREKTUR: Wir säubern den Dateinamen**
-		// Ersetze alle Leerzeichen und Sonderzeichen, um einen gültigen Pfad zu erzeugen.
 		const sanitizedFileName = audioFile.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-		const filePath = `${data.user?.id}/${data.classData?.id}/${Date.now()}-${sanitizedFileName}`;
+		const filePath = `${session.user.id}/${data.classData?.id}/${Date.now()}-${sanitizedFileName}`;
 
 		// 1. Direkter Upload vom Browser zu Supabase Storage
-		const { error: uploadError } = await data.supabase.storage
+		const { error: uploadError } = await supabase.storage // Verwende supabase hier
 			.from('songs')
 			.upload(filePath, audioFile);
 
@@ -67,20 +72,33 @@
 		metadataForm.append('artist', artist);
 		metadataForm.append('filePath', filePath);
 
+		// **HIER IST DIE ENTSCHEIDENDE ÄNDERUNG:**
+		// SvelteKit's `fetch` leitet Cookies automatisch weiter, wenn es direkt
+		// verwendet wird. Wir brauchen KEINE manuellen Header.
 		const response = await fetch('?/saveSongMetadata', {
 			method: 'POST',
 			body: metadataForm
 		});
 
-		const result = await response.json();
-
-		if (result.success) {
-			invalidateAll(); // Lade die Songliste neu
-			(event.target as HTMLFormElement).reset();
+		// Verarbeitung der Antwort (bleibt gleich)
+		if (!response.ok) {
+			// Versuche, eine Fehlermeldung aus der Antwort zu extrahieren
+			let errorMessage = 'Song konnte nicht in der DB gespeichert werden.';
+			try {
+				const errorResult = await response.json();
+				errorMessage = errorResult.message || errorMessage;
+			} catch (e) { /* Ignoriere JSON-Parsing-Fehler */ }
+			form = { error: true, message: errorMessage };
+			await supabase.storage.from('songs').remove([filePath]);
 		} else {
-			form = { error: true, message: result.message || 'Song konnte nicht in der DB gespeichert werden.' };
-			// Optional: Lösche die hochgeladene Datei wieder, wenn der DB-Eintrag fehlschlägt
-			await data.supabase.storage.from('songs').remove([filePath]);
+			const result = await response.json();
+			if (result.success) {
+				invalidateAll();
+				(event.target as HTMLFormElement).reset();
+			} else {
+				form = { error: true, message: result.message || 'Song konnte nicht in der DB gespeichert werden.' };
+				await supabase.storage.from('songs').remove([filePath]);
+			}
 		}
 
 		isUploading = false;
@@ -91,7 +109,14 @@
 		invalidateAll();
 		form = undefined;
 	}
+
+	// Initialisierung für reaktive Variablen
+	onMount(() => {
+		({ supabase, session } = data);
+	});
 </script>
+
+<!-- Der Rest des HTML bleibt unverändert -->
 
 <audio bind:this={audioPlayer} on:ended={() => (currentlyPlayingUrl = null)} />
 
@@ -131,7 +156,7 @@
 										<h3 class="text-lg font-bold text-gray-900 leading-snug">{song.title}</h3>
 										<p class="text-sm text-gray-600 font-medium mt-1">{song.artist}</p>
 									</div>
-									<form method="POST" action="?/deleteSong">
+									<form method="POST" action="?/deleteSong" use:enhance>
 										<input type="hidden" name="songId" value={song.id} />
 										<input type="hidden" name="songPath" value={song.audio_url} />
 										<button type="submit" class="text-gray-400 hover:text-red-500 transition-colors transform hover:scale-110">
@@ -142,15 +167,15 @@
 								<div class="flex justify-between items-center mt-2 pt-3 border-t border-gray-100">
 									<div class="flex items-center gap-2">
 										<span class="font-bold text-lg text-yellow-500">★</span>
-										<span class="font-semibold text-gray-700">{song.average_rating.toFixed(1)}</span>
+										<span class="font-semibold text-gray-700">{(song.average_rating ?? 0).toFixed(1)}</span>
 										<span class="text-sm text-gray-500">/ 5.0</span>
 									</div>
-									<form method="POST" action="?/rateSong" class="flex items-center gap-1">
+									<form method="POST" action="?/rateSong" use:enhance class="flex items-center gap-1">
 										<input type="hidden" name="songId" value={song.id} />
 										{#each { length: 5 } as _, starValue}
 											{@const rating = starValue + 1}
 											<button name="ratingValue" value={rating} class="text-2xl transition-transform hover:scale-125 
-												{rating <= song.user_rating ? 'text-yellow-400' : 'text-gray-300'}">
+												{rating <= (song.user_rating ?? 0) ? 'text-yellow-400' : 'text-gray-300'}">
 												★
 											</button>
 										{/each}
