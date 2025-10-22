@@ -20,7 +20,7 @@
 		"vite": "^5.3.3"
 	},
 	"dependencies": {
-		"@supabase/ssr": "^0.4.0", // Korrekter Schlüssel in Anführungszeichen
+		"@supabase/ssr": "^0.4.0",
 		"@supabase/supabase-js": "^2.44.4"
 	},
 	"type": "module",
