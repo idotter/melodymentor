@@ -16,20 +16,19 @@ export const handle: Handle = async ({ event, resolve }) => {
 		}
 	});
 
-	// **FINALE KORREKTUR: Verwende getUser() statt getSession()**
+	// **FINALE KORREKTUR V2: Verwende getUser() ZUERST und ZUVERLÄSSIG**
 	// getUser() holt die Benutzerdaten und validiert sie gegen den Supabase Auth Server.
-	// Das ist die sichere und empfohlene Methode.
 	const {
-		data: { user } // Wir holen direkt den `user`
+		data: { user } // Hole den User direkt und authentifiziert
 	} = await event.locals.supabase.auth.getUser();
 
-	// Wir speichern den (authentifizierten) Benutzer in `locals`
+	// Speichere den (authentifizierten) Benutzer in `locals`
 	event.locals.user = user;
 
-	// Wir holen die Session separat, falls wir sie später brauchen (z.B. für RLS, obwohl getUser() meist reicht)
+	// Hole die Session danach (optional, aber nützlich für RLS-Policies, die evtl. `session` brauchen)
 	const {
 		data: { session }
-	} = await event.locals.supabase.auth.getSession(); // getSession ist hier ok, da wir den User schon haben
+	} = await event.locals.supabase.auth.getSession();
 	event.locals.session = session;
 
 
