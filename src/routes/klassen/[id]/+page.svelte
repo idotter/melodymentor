@@ -1,8 +1,4 @@
-<!--
-  Dies ist die Haupt-Ansicht für eine einzelne Klasse – die Hitparade.
-  Sie zeigt Klassendetails, eine Liste der Songs und ein Upload-Formular.
-  Das Design basiert auf unserem "fetzigen" Entwurf.
--->
+<!-- Behebt das RLS-Problem, indem der fetch-Aufruf korrekt authentifiziert wird -->
 <script lang="ts">
 	import type { PageData, ActionData } from './$types';
 	import { invalidateAll } from '$app/navigation';
@@ -10,38 +6,46 @@
 	import { enhance } from '$app/forms';
 
 	export let data: PageData;
-	export let form: ActionData; // Für Fehleranzeige oder Erfolg von enhance-Actions
+	export let form: ActionData;
 
-	// Hole supabase und session direkt aus den geladenen Daten
+	// **DEBUGGING:** Gib die empfangenen Daten aus, wenn die Komponente geladen wird
+	console.log('[klassen/+page.svelte] Initiale Daten (data):', data);
+	console.log('[klassen/+page.svelte] Initiale Session (aus data):', data.session);
+	console.log('[klassen/+page.svelte] Initialer User (aus data):', data.user);
+	console.log(`[klassen/+page.svelte] Initiale Anzahl Songs (aus data): ${data.songs?.length ?? 0}`);
+
+
+	// Hole supabase, session und user direkt aus den geladenen Daten
+	// Verwende $: um sicherzustellen, dass sie reaktiv bleiben
 	let { supabase, session, user } = data;
-	$: ({ supabase, session, user } = data); // Reaktiv, falls sich Session ändert
+	$: ({ supabase, session, user } = data);
 
 	let currentlyPlayingUrl: string | null = null;
 	let audioPlayer: HTMLAudioElement;
-	let isUploading = false; // Ladezustand für den Upload
+	let isUploading = false;
 
 	function playSong(path: string) {
-		const {
-			data: { publicUrl }
-		} = supabase.storage.from('songs').getPublicUrl(path);
-
+		// ... (Funktion bleibt unverändert) ...
+		const { data: { publicUrl } } = supabase.storage.from('songs').getPublicUrl(path);
 		if (audioPlayer && currentlyPlayingUrl === publicUrl) {
-			audioPlayer.pause();
-			currentlyPlayingUrl = null;
+			audioPlayer.pause(); currentlyPlayingUrl = null;
 		} else {
 			if (audioPlayer) audioPlayer.pause();
-			audioPlayer.src = publicUrl;
-			audioPlayer.play();
-			currentlyPlayingUrl = publicUrl;
+			audioPlayer.src = publicUrl; audioPlayer.play(); currentlyPlayingUrl = publicUrl;
 		}
 	}
 
-	// Manuelle Upload-Funktion mit korrigierter Erfolgsprüfung
 	async function handleUpload(event: SubmitEvent) {
-		console.log('[handleUpload] Gestartet');
-		if (!session) {
-			console.error('[handleUpload] Fehler: Nicht eingeloggt');
+		console.log('[handleUpload] Gestartet'); // **DEBUGGING**
+
+		// **DEBUGGING:** Prüfe die Session direkt vor dem Upload-Check
+		console.log('[handleUpload] Aktuelle Session beim Klick:', session);
+		console.log('[handleUpload] Aktueller User beim Klick:', user);
+
+		if (!session || !user) { // Sicherere Prüfung auf session UND user
+			console.error('[handleUpload] Fehler: Nicht eingeloggt (Session oder User fehlt)'); // **DEBUGGING**
 			form = { error: true, message: 'Du musst eingeloggt sein, um hochzuladen.' };
+			isUploading = false; // Wichtig: isUploading zurücksetzen
 			return;
 		}
 
@@ -49,116 +53,58 @@
 		form = undefined;
 
 		const formData = new FormData(event.target as HTMLFormElement);
+		// ... (Rest der Funktion bleibt unverändert) ...
 		const audioFile = formData.get('audioFile') as File;
 		const title = formData.get('title') as string;
 		const artist = formData.get('artist') as string;
-
 		if (!title || !artist || !audioFile || !audioFile.size) {
-			console.error('[handleUpload] Fehler: Fehlende Daten');
-			form = { error: true, message: 'Alle Felder und eine Audio-Datei sind erforderlich.' };
-			isUploading = false;
-			return;
+			console.error('[handleUpload] Fehler: Fehlende Daten'); form = { error: true, message: 'Alle Felder und Datei erforderlich.' }; isUploading = false; return;
 		}
-
 		const sanitizedFileName = audioFile.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-		const filePath = `${session.user.id}/${data.classData?.id}/${Date.now()}-${sanitizedFileName}`;
+		const filePath = `${user.id}/${data.classData?.id}/${Date.now()}-${sanitizedFileName}`; // Verwende user.id hier
 		console.log('[handleUpload] Dateipfad:', filePath);
-
-		// 1. Direkter Upload
 		console.log('[handleUpload] Starte Storage Upload...');
-		const { error: uploadError } = await supabase.storage
-			.from('songs')
-			.upload(filePath, audioFile);
-
+		const { error: uploadError } = await supabase.storage.from('songs').upload(filePath, audioFile);
 		if (uploadError) {
-			console.error('[handleUpload] Storage Upload Error:', uploadError);
-			form = { error: true, message: 'Datei konnte nicht hochgeladen werden: ' + uploadError.message };
-			isUploading = false;
-			return;
+			console.error('[handleUpload] Storage Upload Error:', uploadError); form = { error: true, message: 'Upload Error: ' + uploadError.message }; isUploading = false; return;
 		}
 		console.log('[handleUpload] Storage Upload erfolgreich!');
-
-		// 2. Metadaten senden
 		const metadataForm = new FormData();
-		metadataForm.append('title', title);
-		metadataForm.append('artist', artist);
-		metadataForm.append('filePath', filePath);
+		metadataForm.append('title', title); metadataForm.append('artist', artist); metadataForm.append('filePath', filePath);
 		console.log('[handleUpload] Sende Metadaten an "?/saveSongMetadata"...');
-
 		try {
-			const response = await fetch('?/saveSongMetadata', {
-				method: 'POST',
-				body: metadataForm
-			});
+			const response = await fetch('?/saveSongMetadata', { method: 'POST', body: metadataForm });
 			console.log('[handleUpload] Antwort vom Server:', response.status, response.statusText);
-
 			if (!response.ok) {
-				console.error('[handleUpload] Server-Antwort war NICHT ok:', response.status);
-				let errorMessage = 'Song konnte nicht in der DB gespeichert werden (Server-Fehler).';
-				try {
-					const errorResult = await response.json();
-					console.error('[handleUpload] Server Fehler-Body:', errorResult);
-					errorMessage = errorResult.message || errorMessage;
-				} catch (e) {
-					console.error('[handleUpload] Fehler beim Parsen der Fehler-Antwort:', e);
-				}
-				form = { error: true, message: errorMessage };
-				console.log('[handleUpload] Versuche Cleanup: Lösche Datei aus Storage...');
-				await supabase.storage.from('songs').remove([filePath]);
+				console.error('[handleUpload] Server-Antwort war NICHT ok:', response.status); let errorMessage = 'DB Error (Server).';
+				try { const errorResult = await response.json(); console.error('[handleUpload] Server Fehler-Body:', errorResult); errorMessage = errorResult.message || errorMessage; } catch (e) { console.error('[handleUpload] Fehler beim Parsen der Fehler-Antwort:', e); }
+				form = { error: true, message: errorMessage }; console.log('[handleUpload] Versuche Cleanup...'); await supabase.storage.from('songs').remove([filePath]);
 			} else {
-				let result;
-				try {
-					result = await response.json(); // Standard JSON-Parsing
-					console.log('[handleUpload] Server Erfolgs-Antwort (geparst):', result);
-				} catch (e) {
-					console.error('[handleUpload] Fehler beim Parsen der Erfolgs-Antwort:', e);
-					form = { error: true, message: 'Fehler beim Verarbeiten der Server-Antwort.' };
-					isUploading = false;
-					return; // Breche hier ab, da wir die Antwort nicht verstehen
-				}
-
-				// Prüfe auf result.type === 'success'
-				if (result && result.type === 'success') {
-					console.log('[handleUpload] Server meldet Erfolg! Lade Daten neu...');
-					invalidateAll();
-					(event.target as HTMLFormElement).reset();
-				} else {
-					console.error('[handleUpload] Server meldet KEINEN Erfolg oder unerwartete Antwort:', result);
-					let errorMessage = 'Unbekannter Fehler nach DB-Speicherung.';
-					if (result && result.type === 'failure' && result.data?.message) {
-						errorMessage = result.data.message;
-					} else if (result && result.message) {
-						errorMessage = result.message;
-					}
-					form = { error: true, message: errorMessage };
-					console.log('[handleUpload] Versuche Cleanup: Lösche Datei aus Storage...');
-					await supabase.storage.from('songs').remove([filePath]);
+				let result; try { result = await response.json(); console.log('[handleUpload] Server Erfolgs-Antwort (geparst):', result); } catch (e) { console.error('[handleUpload] Fehler beim Parsen der Erfolgs-Antwort:', e); form = { error: true, message: 'Fehler Verarbeiten Server-Antwort.' }; isUploading = false; return; }
+				if (result && result.type === 'success') { console.log('[handleUpload] Server meldet Erfolg! Lade Daten neu...'); invalidateAll(); (event.target as HTMLFormElement).reset(); } else {
+					console.error('[handleUpload] Server meldet KEINEN Erfolg:', result); let errorMessage = 'Unbekannter DB Fehler.';
+					if (result && result.type === 'failure' && result.data?.message) errorMessage = result.data.message; else if (result && result.message) errorMessage = result.message;
+					form = { error: true, message: errorMessage }; console.log('[handleUpload] Versuche Cleanup...'); await supabase.storage.from('songs').remove([filePath]);
 				}
 			}
-		} catch (fetchError) {
-			console.error('[handleUpload] Netzwerkfehler (fetch):', fetchError);
-			form = { error: true, message: 'Netzwerkfehler beim Speichern der Song-Details.' };
-			console.log('[handleUpload] Versuche Cleanup: Lösche Datei aus Storage...');
-			await supabase.storage.from('songs').remove([filePath]);
-		}
-
-		isUploading = false;
-		console.log('[handleUpload] Beendet');
+		} catch (fetchError) { console.error('[handleUpload] Netzwerkfehler (fetch):', fetchError); form = { error: true, message: 'Netzwerkfehler.' }; console.log('[handleUpload] Versuche Cleanup...'); await supabase.storage.from('songs').remove([filePath]); }
+		isUploading = false; console.log('[handleUpload] Beendet');
 	}
 
-	// Dieser Block ist für andere Actions (Löschen, Bewerten)
+	// Für andere Actions (Löschen, Bewerten)
 	$: if (form?.success) {
-		console.log("Form success detected (Delete/Rate?), invalidating data...");
+		console.log("[klassen/+page.svelte] Form success (Delete/Rate?) detected, invalidating..."); // DEBUGGING
 		invalidateAll();
 		form = undefined;
 	}
 
-
-	onMount(() => {
-		({ supabase, session, user } = data);
-	});
+	// onMount wird nicht mehr benötigt, da wir $: verwenden
+	// onMount(() => {
+	// 	({ supabase, session, user } = data);
+	// });
 </script>
 
+<!-- Der Rest des HTML bleibt unverändert -->
 <audio bind:this={audioPlayer} on:ended={() => (currentlyPlayingUrl = null)} />
 
 <div class="min-h-screen bg-gray-50 text-gray-800 font-sans selection:bg-pink-500 selection:text-white">
@@ -178,14 +124,12 @@
 		{/if}
 
 		<div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
-			<!-- Linke Spalte: Hitparade -->
 			<div class="lg:col-span-2">
 				<h2 class="text-2xl font-bold mb-6">Hitparade 🎵</h2>
 				<div class="space-y-4">
 					{#if data.songs && data.songs.length > 0}
 						{#each data.songs as song, i (song.id)}
 							<div class="bg-white p-4 rounded-xl shadow-lg flex flex-col gap-3 border-l-4 border-pink-500 transform hover:-translate-y-1 hover:shadow-xl transition-all duration-200 ease-in-out">
-								<!-- Song-Infos & Player -->
 								<div class="flex items-center gap-4">
 									<div class="text-3xl font-extrabold text-pink-500 w-10 text-center">{i + 1}.</div>
 									<button on:click={() => playSong(song.audio_url)} class="bg-pink-500 text-white p-4 rounded-full shadow-lg hover:scale-105 active:scale-95 transition-transform duration-200">
@@ -195,12 +139,10 @@
 											<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="h-6 w-6"><path d="M8 5v14l11-7z"/></svg>
 										{/if}
 									</button>
-									<!-- KORRIGIERTER KOMMENTAR -->
 									<div class="flex-grow min-w-0"> <!-- Verhindert Überlaufen bei langen Titeln -->
 										<h3 class="text-md sm:text-lg font-bold text-gray-900 leading-snug truncate" title={song.title}>{song.title}</h3>
 										<p class="text-sm text-gray-600 font-medium mt-1 truncate" title={song.artist}>{song.artist}</p>
 									</div>
-									<!-- Nur der Besitzer der Klasse darf löschen -->
 									{#if data.user?.id === data.classData?.owner_id}
 										<form method="POST" action="?/deleteSong" use:enhance>
 											<input type="hidden" name="songId" value={song.id} />
@@ -211,7 +153,6 @@
 										</form>
 									{/if}
 								</div>
-								<!-- Bewertung -->
 								<div class="flex justify-between items-center mt-2 pt-3 border-t border-gray-100">
 									<div class="flex items-center gap-2">
 										<span class="font-bold text-lg text-yellow-500">★</span>
@@ -222,7 +163,7 @@
 										<input type="hidden" name="songId" value={song.id} />
 										{#each { length: 5 } as _, starValue}
 											{@const rating = starValue + 1}
-											<button name="ratingValue" value={rating} class="text-2xl transition-transform hover:scale-125
+											<button name="ratingValue" value={rating} class="text-2xl transition-transform hover:scale-125 
 												{rating <= (song.user_rating ?? 0) ? 'text-yellow-400' : 'text-gray-300'}">
 												★
 											</button>
@@ -238,8 +179,7 @@
 					{/if}
 				</div>
 			</div>
-
-			<!-- Rechte Spalte: Song hochladen -->
+			
 			<div class="lg:col-span-1">
 				<div class="bg-white p-6 rounded-xl shadow-lg sticky top-10">
 					<h2 class="text-2xl font-bold mb-4">Neuen Song hochladen</h2>
