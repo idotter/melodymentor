@@ -5,52 +5,42 @@ import type { LayoutLoad } from './$types';
 // Diese `load`-Funktion ist das Herzstück der offiziellen Supabase-Architektur.
 export const load: LayoutLoad = async ({ fetch, data, depends }) => {
 	// `depends('supabase:auth')` sorgt dafür, dass diese Funktion erneut ausgeführt wird,
-	// wenn sich der Login-Status ändert. Das ist wichtig für Login/Logout.
+	// wenn sich der Login-Status ändert.
 	depends('supabase:auth');
 
-	/**
-	 * Wir erstellen einen Supabase-Client. Die entscheidende Logik liegt in der
-	 * `cookies`-Konfiguration, die den Fehler behebt.
-	 */
+	// Initialisiert den Supabase-Client für den Browser.
+	// Die Cookie-Methoden sind wichtig für die automatische Verwaltung.
 	const supabase = createBrowserClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
 		global: {
 			fetch
 		},
 		cookies: {
-			// **HIER IST DIE FINALE KORREKTUR:**
-			// Die `get`, `set` und `remove` Methoden müssen ALLE implementiert sein,
-			// damit der Supabase Client die Cookies korrekt verwalten kann.
-			// Der vorherige Code hatte nur `get`.
 			get(key) {
 				if (!isBrowser()) {
+					// Auf dem Server: Verwende die Session-Daten, die vom Server-Hook kommen.
 					return JSON.stringify(data.session);
 				}
+				// Im Browser: Lese die Cookies direkt.
 				const cookie = parse(document.cookie);
 				return cookie[key];
 			},
 			set(key, value, options) {
 				if (!isBrowser()) return;
-				document.cookie = serialize(key, value, options);
+				document.cookie = serialize(key, value, { ...options, path: '/' }); // Path hinzugefügt
 			},
 			remove(key, options) {
 				if (!isBrowser()) return;
-				document.cookie = serialize(key, '', { ...options, maxAge: -1 });
+				document.cookie = serialize(key, '', { ...options, path: '/', maxAge: -1 }); // Path hinzugefügt
 			}
 		}
 	});
 
-	/**
-	 * Wir holen die aktuelle Session.
-	 * Im Browser wird hier eine Anfrage an Supabase gestellt.
-	 * Auf dem Server liest diese Funktion sicher aus den `data.session`-Daten,
-	 * ohne eine erneute Anfrage zu stellen.
-	 */
-	const {
-		data: { session }
-	} = await supabase.auth.getSession();
+	// **FINALE KORREKTUR:** Wir holen die Session NICHT erneut im Browser-Layout.
+	// Wir verlassen uns auf `data.session`, das vom Server (`+layout.server.ts`) kommt.
+	const { session } = data;
 
-	// Wir geben den initialisierten Supabase-Client und die Session an alle
-	// untergeordneten Seiten weiter, damit diese darauf zugreifen können.
+	// Gib den Client und die vom Server gelieferte Session weiter.
+	// Der 'user' wird daraus abgeleitet.
 	return { supabase, session, user: session?.user ?? null };
 };
 
