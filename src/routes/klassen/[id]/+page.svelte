@@ -37,36 +37,23 @@
 
 	// Callback für das Bewertungsformular
 	const handleRatingResult: SubmitFunction = () => {
-		// **DEBUGGING START**
 		console.log('[handleRatingResult] Formular wird abgeschickt...');
-		// **DEBUGGING ENDE**
 		return async ({ result, update }) => {
-			// **DEBUGGING START**
 			console.log('[handleRatingResult] Antwort vom Server erhalten:', result);
-			// **DEBUGGING ENDE**
-
-			// Prüfe, ob die Server-Action erfolgreich war (Typ 'success')
 			if (result.type === 'success') {
-				// **DEBUGGING START**
 				console.log('[handleRatingResult] Server meldet Erfolg! Rufe invalidateAll() auf...');
-				// **DEBUGGING ENDE**
-				// Wenn ja, lade alle Daten neu, um die Änderungen anzuzeigen
+				// WICHTIG: invalidateAll() sollte SvelteKit anweisen, die `load` Funktionen neu auszuführen
 				await invalidateAll();
-				// **DEBUGGING START**
 				console.log('[handleRatingResult] invalidateAll() abgeschlossen.');
-				// **DEBUGGING ENDE**
 			} else {
-				// **DEBUGGING START**
 				console.error('[handleRatingResult] Server meldet Fehler:', result);
-				// Optional: Fehlermeldung anzeigen
 				if (result.type === 'failure' && result.data?.message) {
 					form = { error: true, message: result.data.message };
 				} else {
 					form = { error: true, message: 'Fehler beim Bewerten.' };
 				}
-				// **DEBUGGING ENDE**
 			}
-			// `update()` wird hier nicht benötigt, da invalidateAll() die Seite neu lädt
+			// Wir rufen update() nicht auf, da invalidateAll ausreichen sollte
 		};
 	};
 
@@ -106,6 +93,9 @@
 				<div class="space-y-4">
 					{#if data.songs && data.songs.length > 0}
 						{#each data.songs as song, i (song.id)}
+							<!-- **DEBUGGING START:** Gib user_rating direkt aus -->
+							<!-- <pre>DEBUG: Song {song.id}, User Rating: {song.user_rating ?? 'null'}</pre> -->
+							<!-- **DEBUGGING ENDE:** Kommentar entfernen zum Testen -->
 							<div class="bg-white p-4 rounded-xl shadow-lg flex flex-col gap-3 border-l-4 border-pink-500 transform hover:-translate-y-1 hover:shadow-xl transition-all duration-200 ease-in-out">
 								<!-- Song-Infos & Player (unverändert) -->
 								<div class="flex items-center gap-4">
