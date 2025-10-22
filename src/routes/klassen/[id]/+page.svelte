@@ -2,34 +2,25 @@
 <script lang="ts">
 	import type { PageData, ActionData } from './$types';
 	import { invalidateAll } from '$app/navigation';
-	import { onMount } from 'svelte';
 	import { enhance } from '$app/forms';
 
 	// Diese Daten kommen vom Layout (+layout.ts) UND von der Seite (+page.server.ts)
 	export let data: PageData;
 	export let form: ActionData;
 
-	// **KORREKTUR/VERDEUTLICHUNG:**
-	// Wir holen supabase, session und user explizit aus data.
-	// Das $: sorgt dafür, dass die Variablen aktualisiert werden, wenn sich `data` ändert.
-	let supabase: PageData['supabase'];
-	let session: PageData['session'];
-	let user: PageData['user'];
-	let classData: PageData['classData'];
-	let songs: PageData['songs'];
-
-	$: ({ supabase, session, user, classData, songs } = data);
-
+	// **KORREKTUR:** Wir greifen direkt auf data.supabase, data.session etc. zu,
+	// anstatt separate reaktive Variablen zu deklarieren. Das ist robuster.
 
 	let currentlyPlayingUrl: string | null = null;
 	let audioPlayer: HTMLAudioElement;
 	let isUploading = false;
 
 	function playSong(path: string) {
-		if (!supabase) return; // Sicherheitscheck
+		// Verwende data.supabase direkt
+		if (!data.supabase) return;
 		const {
 			data: { publicUrl }
-		} = supabase.storage.from('songs').getPublicUrl(path);
+		} = data.supabase.storage.from('songs').getPublicUrl(path);
 
 		if (audioPlayer && currentlyPlayingUrl === publicUrl) {
 			audioPlayer.pause();
@@ -43,8 +34,15 @@
 	}
 
 	async function handleUpload(event: SubmitEvent) {
-		if (!supabase || !session || !user) { // Verwende die reaktiven Variablen
+		console.log('[handleUpload] Gestartet');
+		console.log('[handleUpload] Aktuelle data.session:', data.session); // DEBUGGING
+		console.log('[handleUpload] Aktueller data.user:', data.user);       // DEBUGGING
+
+		// Verwende data.session und data.user direkt für die Prüfung
+		if (!data.supabase || !data.session || !data.user) {
+			console.error('[handleUpload] Fehler: Nicht eingeloggt (Session/User/Supabase fehlt in data)');
 			form = { error: true, message: 'Du musst eingeloggt sein, um hochzuladen.' };
+			isUploading = false; // Zurücksetzen bei Fehler
 			return;
 		}
 
@@ -57,76 +55,88 @@
 		const artist = formData.get('artist') as string;
 
 		if (!title || !artist || !audioFile || !audioFile.size) {
+			console.error('[handleUpload] Fehler: Fehlende Daten');
 			form = { error: true, message: 'Alle Felder und eine Audio-Datei sind erforderlich.' };
 			isUploading = false;
 			return;
 		}
 
 		const sanitizedFileName = audioFile.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-		// Verwende user.id hier sicher
-		const filePath = `${user.id}/${classData?.id}/${Date.now()}-${sanitizedFileName}`;
+		// Verwende data.user.id direkt
+		const filePath = `${data.user.id}/${data.classData?.id}/${Date.now()}-${sanitizedFileName}`;
+		console.log('[handleUpload] Dateipfad:', filePath);
 
-		// 1. Direkter Upload
-		const { error: uploadError } = await supabase.storage
+		// 1. Direkter Upload mit data.supabase
+		console.log('[handleUpload] Starte Storage Upload...');
+		const { error: uploadError } = await data.supabase.storage
 			.from('songs')
 			.upload(filePath, audioFile);
 
 		if (uploadError) {
+			console.error('[handleUpload] Storage Upload Error:', uploadError);
 			form = { error: true, message: 'Datei konnte nicht hochgeladen werden: ' + uploadError.message };
 			isUploading = false;
 			return;
 		}
+		console.log('[handleUpload] Storage Upload erfolgreich!');
 
 		// 2. Metadaten senden
 		const metadataForm = new FormData();
 		metadataForm.append('title', title);
 		metadataForm.append('artist', artist);
 		metadataForm.append('filePath', filePath);
+		console.log('[handleUpload] Sende Metadaten an "?/saveSongMetadata"...');
 
 		try {
+			// SvelteKits fetch leitet Cookies automatisch weiter
 			const response = await fetch('?/saveSongMetadata', {
 				method: 'POST',
 				body: metadataForm
 			});
+			console.log('[handleUpload] Antwort vom Server:', response.status, response.statusText);
 
 			if (!response.ok) {
-				let errorMessage = 'Song konnte nicht in der DB gespeichert werden.';
-				try { const errorResult = await response.json(); errorMessage = errorResult.message || errorMessage; } catch (e) { /* ignore */ }
+				console.error('[handleUpload] Server-Antwort war NICHT ok:', response.status);
+				let errorMessage = 'Song konnte nicht in der DB gespeichert werden (Server-Fehler).';
+				try { const errorResult = await response.json(); console.error('[handleUpload] Server Fehler-Body:', errorResult); errorMessage = errorResult.message || errorMessage; } catch (e) { console.error('[handleUpload] Fehler beim Parsen der Fehler-Antwort:', e); }
 				form = { error: true, message: errorMessage };
-				await supabase.storage.from('songs').remove([filePath]);
+				console.log('[handleUpload] Versuche Cleanup...');
+				await data.supabase.storage.from('songs').remove([filePath]);
 			} else {
-				const result = await response.json();
-				if (result?.type === 'success') {
-					invalidateAll();
+				let result;
+				try { result = await response.json(); console.log('[handleUpload] Server Erfolgs-Antwort (geparst):', result); } catch (e) { console.error('[handleUpload] Fehler beim Parsen der Erfolgs-Antwort:', e); form = { error: true, message: 'Fehler Verarbeiten Server-Antwort.' }; isUploading = false; return; }
+
+				if (result && result.type === 'success') {
+					console.log('[handleUpload] Server meldet Erfolg! Lade Daten neu...');
+					invalidateAll(); // Löst Neuladen der `load` Funktion aus
 					(event.target as HTMLFormElement).reset();
 				} else {
-					let errorMessage = 'Unbekannter Fehler nach DB-Speicherung.';
-					if (result?.type === 'failure' && result.data?.message) {
-						errorMessage = result.data.message;
-					} else if (result?.message) {
-						errorMessage = result.message;
-					}
+					console.error('[handleUpload] Server meldet KEINEN Erfolg:', result);
+					let errorMessage = 'Unbekannter DB Fehler.';
+					if (result && result.type === 'failure' && result.data?.message) errorMessage = result.data.message; else if (result && result.message) errorMessage = result.message;
 					form = { error: true, message: errorMessage };
-					await supabase.storage.from('songs').remove([filePath]);
+					console.log('[handleUpload] Versuche Cleanup...');
+					await data.supabase.storage.from('songs').remove([filePath]);
 				}
 			}
 		} catch (fetchError) {
-			form = { error: true, message: 'Netzwerkfehler beim Speichern.' };
-			await supabase.storage.from('songs').remove([filePath]);
+			console.error('[handleUpload] Netzwerkfehler (fetch):', fetchError);
+			form = { error: true, message: 'Netzwerkfehler.' };
+			console.log('[handleUpload] Versuche Cleanup...');
+			await data.supabase.storage.from('songs').remove([filePath]);
 		}
 
 		isUploading = false;
+		console.log('[handleUpload] Beendet');
 	}
 
+	// Für andere Actions (Löschen, Bewerten) mit use:enhance
 	$: if (form?.success) {
+		console.log("[klassen/+page.svelte] Form success (Delete/Rate?) detected, invalidating...");
 		invalidateAll();
 		form = undefined;
 	}
 
-	// onMount wird nicht mehr benötigt, da $: die Reaktivität sicherstellt.
-	// onMount(() => {
-	// 	({ supabase, session, user, classData, songs } = data);
-	// });
 </script>
 
 <!-- Das HTML bleibt unverändert -->
@@ -134,15 +144,15 @@
 
 <div class="min-h-screen bg-gray-50 text-gray-800 font-sans selection:bg-pink-500 selection:text-white">
 	<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-10">
-		{#if classData}
+		{#if data.classData}
 			<div class="relative bg-white p-6 sm:p-8 rounded-xl shadow-xl mb-10 overflow-hidden">
 				<div class="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-pink-500 via-green-400 to-blue-400 opacity-10 blur-xl scale-110" />
 				<div class="relative z-10">
 					<a href="/dashboard" class="text-sm text-pink-600 hover:underline font-medium mb-2 inline-block">&larr; Zurück zum Dashboard</a>
-					<h1 class="text-4xl font-extrabold text-gray-900 leading-tight">{classData.name}</h1>
+					<h1 class="text-4xl font-extrabold text-gray-900 leading-tight">{data.classData.name}</h1>
 					<div class="mt-4 bg-gray-100 border-2 border-dashed border-gray-200 rounded-lg p-3 inline-flex items-center gap-3">
 						<span class="text-xs text-gray-500 font-semibold uppercase">Klassencode zum Teilen:</span>
-						<p class="font-mono text-xl font-extrabold text-gray-800 tracking-wider">{classData.class_code}</p>
+						<p class="font-mono text-xl font-extrabold text-gray-800 tracking-wider">{data.classData.class_code}</p>
 					</div>
 				</div>
 			</div>
@@ -153,8 +163,9 @@
 			<div class="lg:col-span-2">
 				<h2 class="text-2xl font-bold mb-6">Hitparade 🎵</h2>
 				<div class="space-y-4">
-					{#if songs && songs.length > 0}
-						{#each songs as song, i (song.id)}
+					<!-- **KORREKTUR:** Verwende data.songs direkt -->
+					{#if data.songs && data.songs.length > 0}
+						{#each data.songs as song, i (song.id)}
 							<div class="bg-white p-4 rounded-xl shadow-lg flex flex-col gap-3 border-l-4 border-pink-500 transform hover:-translate-y-1 hover:shadow-xl transition-all duration-200 ease-in-out">
 								<!-- Song-Infos & Player -->
 								<div class="flex items-center gap-4">
@@ -171,7 +182,8 @@
 										<p class="text-sm text-gray-600 font-medium mt-1 truncate" title={song.artist}>{song.artist}</p>
 									</div>
 									<!-- Nur der Besitzer der Klasse darf löschen -->
-									{#if user?.id === classData?.owner_id}
+									<!-- **KORREKTUR:** Verwende data.user direkt -->
+									{#if data.user?.id === data.classData?.owner_id}
 										<form method="POST" action="?/deleteSong" use:enhance>
 											<input type="hidden" name="songId" value={song.id} />
 											<input type="hidden" name="songPath" value={song.audio_url} />
