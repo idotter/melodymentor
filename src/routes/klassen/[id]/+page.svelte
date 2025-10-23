@@ -45,22 +45,15 @@
 		isUploading = false;
 	}
 
-	// Callback für das Bewertungsformular MIT DEBUGGING LOGS
+	// Callback für das Bewertungsformular
 	const handleRatingResult: SubmitFunction = () => {
-		console.log('[handleRatingResult] Formular wird abgeschickt...'); // DEBUGGING
-		return async ({ result }) => { // update entfernt
-			console.log('[handleRatingResult] Antwort vom Server erhalten:', result); // DEBUGGING
+		// Diese Funktion löst nur das Neuladen aus, die UI-Aktualisierung
+		// erfolgt durch den #key-Block und die $: Zuweisungen.
+		return async ({ result }) => {
 			if (result.type === 'success') {
-				console.log('[handleRatingResult] Server meldet Erfolg! Rufe invalidateAll() auf...'); // DEBUGGING
 				await invalidateAll();
-				console.log('[handleRatingResult] invalidateAll() abgeschlossen.'); // DEBUGGING
-
-				// Wir vertrauen darauf, dass $: songs = data.songs; die Aktualisierung auslöst.
-				// Die Debugging-Ausgabe im HTML wird uns zeigen, ob die Daten ankommen.
-				console.log('[handleRatingResult] UI sollte jetzt aktualisiert sein.'); // DEBUGGING
-
 			} else {
-				console.error('[handleRatingResult] Server meldet Fehler:', result); // DEBUGGING
+				// Optional: Fehler im `form` speichern für Anzeige
 				if (result.type === 'failure' && result.data?.message) {
 					form = { error: true, message: result.data.message };
 				} else {
@@ -108,9 +101,6 @@
 					{#key songs}
 						{#if songs && songs.length > 0}
 							{#each songs as song, i (song.id)}
-								<!-- **DEBUGGING START:** Gib user_rating direkt aus -->
-								<div class="text-xs text-red-500">DEBUG: Song {song.id}, User Rating: {song.user_rating ?? 'null'}</div>
-								<!-- **DEBUGGING ENDE** -->
 								<div class="bg-white p-4 rounded-xl shadow-lg flex flex-col gap-3 border-l-4 border-pink-500 transform hover:-translate-y-1 hover:shadow-xl transition-all duration-200 ease-in-out">
 									<!-- Song-Infos & Player -->
 									<div class="flex items-center gap-4">
