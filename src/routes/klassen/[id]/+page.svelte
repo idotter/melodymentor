@@ -79,7 +79,8 @@
 					{#if user && !user.is_anonymous}
 						<a href="/dashboard" class="text-sm text-pink-600 hover:underline font-medium mb-2 inline-block">&larr; Zurück zum Dashboard</a>
 					{:else}
-						<a href="/" class="text-sm text-pink-600 hover:underline font-medium mb-2 inline-block">&larr; Neue Klasse beitreten</a>
+						<!-- Link entfernt -->
+                        <span class="text-sm text-gray-500 font-medium mb-2 inline-block">&nbsp;</span> <!-- Platzhalter für Layout-Konsistenz -->
 					{/if}
 					<h1 class="text-4xl font-extrabold text-gray-900 leading-tight">{classData.name}</h1>
 					{#if user && !user.is_anonymous}
