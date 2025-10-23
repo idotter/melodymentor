@@ -2,24 +2,59 @@
 <script lang="ts">
 	import type { PageData, ActionData } from './$types';
 	import { enhance } from '$app/forms';
+	import { onMount } from 'svelte';
+	import confetti from 'canvas-confetti'; // Import confetti library
 
 	export let data: PageData;
 	export let form: ActionData; // Für Fehlermeldungen des Beitrittsformulars
 
 	// data.user ist hier immer null oder anonym
 	// data.topSongs enthält die Liste der Top-Songs
+
+	// Funktion zum Auslösen des Konfettis
+	function triggerConfetti(event: MouseEvent) {
+		const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+		const originX = rect.left + rect.width / 2;
+		const originY = rect.top + rect.height / 2;
+
+		confetti({
+			particleCount: 100,
+			spread: 70,
+			origin: {
+				x: originX / window.innerWidth, // Ursprung auf Klickposition relativ zum Fenster
+				y: originY / window.innerHeight
+			},
+			colors: ['#ec4899', '#f472b6', '#f9a8d4', '#ffffff'] // Pink-Töne und Weiß
+		});
+	}
+
 </script>
 
+<!-- Add confetti library -->
+<svelte:head>
+	<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+</svelte:head>
+
 <div class="relative min-h-screen bg-gradient-to-br from-pink-100 via-purple-100 to-blue-100 flex flex-col items-center justify-start pt-16 px-4 overflow-hidden">
-	<!-- Angepasstes Schräges Banner oben rechts -->
+	<!-- NEUER Schräger Banner oben LINKS -->
+	<div class="absolute top-0 left-0 w-36 h-36 overflow-hidden z-50 pointer-events-none">
+		<button
+			on:click={triggerConfetti}
+			class="absolute block w-[200%] transform -rotate-45 bg-pink-600 text-white text-center py-1 shadow-lg transition-colors duration-300 ease-in-out whitespace-nowrap pointer-events-auto hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-2"
+			style="top: 30px; left: -50px;"
+		>
+			<span class="block text-sm font-bold uppercase tracking-wider">BETA</span>
+		</button>
+	</div>
+
+	<!-- ALTER Banner ( entfernt ) -->
+	<!--
 	<div class="absolute top-0 right-0 w-48 h-48 overflow-hidden z-50 pointer-events-none">
-		<!-- KORREKTUR: Rotation geändert von -rotate-45 zu rotate-45 -->
-		<!-- KORREKTUR: Kommentar-Syntax von {/*...*/} zu <!--...--> geändert -->
-		<a href="/login" class="absolute block w-[200%] transform rotate-45 bg-pink-600 text-white text-center py-2 shadow-lg transition-colors duration-300 ease-in-out whitespace-nowrap pointer-events-auto hover:bg-pink-700" style="top: 50px; right: -50px;"> <!-- Position leicht angepasst -->
+		<a href="/login" class="absolute block w-[200%] transform rotate-45 bg-pink-600 text-white text-center py-2 shadow-lg transition-colors duration-300 ease-in-out whitespace-nowrap pointer-events-auto hover:bg-pink-700" style="top: 50px; right: -50px;">
 			<span class="block text-sm font-bold uppercase tracking-wider">BETA</span>
 		</a>
 	</div>
-
+	-->
 
 	<div class="text-center mb-12">
 		<!-- Noten-Icon mit Pulsier-Animation -->
