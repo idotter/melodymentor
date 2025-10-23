@@ -31,12 +31,14 @@
 
 		<section>
 			<h2 class="text-2xl font-bold text-gray-800 mb-3 border-b pb-2">Unterrichtsideen</h2>
-			<ul class="list-disc list-inside text-gray-700 space-y-2">
-				<li>**Gedichtvertonung:** Schüler schreiben ein Gedicht und vertonen es anschliessend mit einer KI im passenden Stil.</li>
-				<li>**Soundtrack für eine Geschichte:** Eine Kurzgeschichte wird geschrieben und mit passender Hintergrundmusik unterlegt.</li>
-				<li>**Themen-Songs:** Songs zu aktuellen Unterrichtsthemen erstellen lassen und analysieren.</li>
-				<li>**Genre-Experimente:** Einen einfachen Textprompt in verschiedenen Musikstilen generieren lassen und die Unterschiede besprechen.</li>
-				<li>**Prompt-Engineering-Challenge:** Wer erzeugt mit dem besten Prompt das eindrucksvollste Stück Musik zu einem vorgegebenen Thema?</li>
+			<!-- KORREKTUR: list-disc entfernt, custom-list-style Klasse hinzugefügt -->
+			<ul class="custom-list-style list-inside text-gray-700 space-y-2">
+				<!-- KORREKTUR: ** durch font-bold ersetzt -->
+				<li><strong class="font-bold">Gedichtvertonung:</strong> Schüler schreiben ein Gedicht und vertonen es anschliessend mit einer KI im passenden Stil.</li>
+				<li><strong class="font-bold">Soundtrack für einen LernFilm:</strong> Ein Kurzgeschichte wird geschrieben und mit passender Hintergrundmusik unterlegt.</li>
+				<li><strong class="font-bold">Themen-Songs:</strong> Songs zu aktuellen Unterrichtsthemen erstellen lassen und analysieren.</li>
+				<li><strong class="font-bold">Genre-Experimente:</strong> Einen einfachen Textprompt in verschiedenen Musikstilen generieren lassen und die Unterschiede besprechen.</li>
+				<li><strong class="font-bold">Prompt-Engineering-Challenge:</strong> Wer erzeugt mit dem besten Prompt das eindrucksvollste Stück Musik zu einem vorgegebenen Thema?</li>
 			</ul>
 		</section>
 
@@ -95,6 +97,31 @@
 
 <style lang="postcss">
 	/* Globale Stile aus app.css werden übernommen. */
+
+	/* KORREKTUR: Eigene Listen-Stile für Noten-Icon */
+	.custom-list-style {
+		list-style: none; /* Entfernt Standard-Punkte */
+		padding-left: 0; /* Entfernt Standard-Einzug */
+	}
+
+	.custom-list-style li {
+		position: relative;
+		padding-left: 1.8em; /* Platz für das Icon schaffen */
+		margin-bottom: 0.5rem; /* Abstand zwischen Listenelementen */
+	}
+
+	.custom-list-style li::before {
+		content: '';
+		position: absolute;
+		left: 0;
+		top: 0.15em; /* Vertikale Ausrichtung anpassen */
+		width: 1.2em; /* Größe des Icons */
+		height: 1.2em;
+		background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%23ec4899" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>');
+		background-size: contain;
+		background-repeat: no-repeat;
+	}
+
 	/* Hier können bei Bedarf spezifische Stile für diese Seite hinzugefügt werden. */
 </style>
 
