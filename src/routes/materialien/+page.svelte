@@ -1,7 +1,6 @@
 <!-- Seite für Unterrichtsmaterialien -->
 <script lang="ts">
 	// Diese Seite benötigt vorerst keine spezifische Logik im Script-Teil.
-	// Wir können hier später Daten laden, falls die Materialien dynamisch sein sollen.
 </script>
 
 <div class="relative min-h-screen bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100 flex flex-col items-center justify-start pt-16 px-4">
@@ -25,7 +24,7 @@
 		<section>
 			<h2 class="text-2xl font-bold text-gray-800 mb-3 border-b pb-2">Einführung in KI-Musikgeneratoren</h2>
 			<p class="text-gray-700 leading-relaxed">
-				KI-Musikgeneratoren wie Suno, Udio oder AIVA ermöglichen es, Musikstücke basierend auf Texteingaben (Prompts) zu erstellen. Dies eröffnet spannende Möglichkeiten für den M+I-Unterricht, um Kreativität, technisches Verständnis und Medienkompetenz zu fördern.
+				KI-Musikgeneratoren wie Suno, Udio oder AIVA ermöglichen es, Musikstücke basierend auf Texteingaben zu erstellen. Dies eröffnet spannende Möglichkeiten für den M+I-Unterricht, um Kreativität, technisches Verständnis und Medienkompetenz zu fördern.
 			</p>
 			<!-- Weitere Inhalte hier -->
 		</section>
@@ -33,9 +32,9 @@
 		<section>
 			<h2 class="text-2xl font-bold text-gray-800 mb-3 border-b pb-2">Unterrichtsideen</h2>
 			<ul class="list-disc list-inside text-gray-700 space-y-2">
-				<li>**Gedichtvertonung:** Schüler\*innen schreiben ein Gedicht und vertonen es anschliessend mit einer KI im passenden Stil.</li>
+				<li>**Gedichtvertonung:** Schüler schreiben ein Gedicht und vertonen es anschliessend mit einer KI im passenden Stil.</li>
 				<li>**Soundtrack für eine Geschichte:** Eine Kurzgeschichte wird geschrieben und mit passender Hintergrundmusik unterlegt.</li>
-				<li>**Themen-Songs:** Songs zu aktuellen Unterrichtsthemen (z.B. Wasserkreislauf, Französische Revolution) erstellen lassen und analysieren.</li>
+				<li>**Themen-Songs:** Songs zu aktuellen Unterrichtsthemen erstellen lassen und analysieren.</li>
 				<li>**Genre-Experimente:** Einen einfachen Textprompt in verschiedenen Musikstilen generieren lassen und die Unterschiede besprechen.</li>
 				<li>**Prompt-Engineering-Challenge:** Wer erzeugt mit dem besten Prompt das eindrucksvollste Stück Musik zu einem vorgegebenen Thema?</li>
 			</ul>
@@ -67,21 +66,21 @@
 
 			<div class="text-blue-900 leading-relaxed">
 				<p class="mb-4">
-					Das Erstellen von KI-Songs im Unterricht fördert vielfältige Kompetenzen gemäss Lehrplan 21. Schüler\*innen setzen sich aktiv mit Technologie auseinander (MI.1), produzieren eigene Medieninhalte (MI.2) und reflektieren über deren Wirkung und gesellschaftliche Aspekte wie das Urheberrecht (MI.3). Sie lernen, digitale Werkzeuge kreativ zu nutzen (Anwendungskompetenzen) und entwickeln ein Verständnis für die Funktionsweise von KI (Orientierungswissen). Im Fach Musik können die erstellten Werke analysiert (MU.4 Hören und sich orientieren) und als Basis für weiteres Gestalten (MU.5 Gestalten und Improvisieren) genutzt werden.
+					Das Erstellen von KI-Songs im Unterricht fördert vielfältige Kompetenzen gemäss Lehrplan 21. Schüler setzen sich aktiv mit Technologie auseinander, produzieren eigene Medieninhalte und reflektieren über deren Wirkung und gesellschaftliche Aspekte wie das Urheberrecht. Sie lernen, digitale Werkzeuge kreativ zu nutzen und entwickeln ein Verständnis für die Funktionsweise von KI. Im Fach Musik können die erstellten Werke analysiert und als Basis für weiteres Gestalten genutzt werden.
 				</p>
 				<h3 class="font-semibold mb-2 text-lg">Besonders zu beachten:</h3>
 				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
 					<div class="bg-white p-3 rounded shadow">
-						<strong class="text-blue-700 block mb-1">⚖️ Urheberrecht:</strong> Klären Sie die AGBs der Tools! Wem gehören die Songs? Dürfen sie geteilt/veröffentlicht werden? (MI.3)
+						<strong class="text-blue-700 block mb-1">⚖️ Urheberrecht:</strong> Klären Sie die AGBs der Tools! Wem gehören die Songs? Dürfen sie geteilt/veröffentlicht werden?
 					</div>
 					<div class="bg-white p-3 rounded shadow">
-						<strong class="text-blue-700 block mb-1">🔒 Datenschutz:</strong> Welche Daten werden erfasst? Sind anonyme Nutzungen möglich oder braucht es Accounts? (MI.1, MI.3)
+						<strong class="text-blue-700 block mb-1">🔒 Datenschutz:</strong> Welche Daten werden erfasst? Sind anonyme Nutzungen möglich oder braucht es Accounts?
 					</div>
 					<div class="bg-white p-3 rounded shadow">
-						<strong class="text-blue-700 block mb-1">✍️ Prompting:</strong> Das Formulieren präziser Anweisungen (Genre, Stimmung, Instrumente) ist eine Schlüsselkompetenz und erfordert Übung. (Anwendungskompetenzen, Sprache)
+						<strong class="text-blue-700 block mb-1">✍️ Prompting:</strong> Das Formulieren präziser Anweisungen ist eine Schlüsselkompetenz und erfordert Übung.
 					</div>
 					<div class="bg-white p-3 rounded shadow">
-						<strong class="text-blue-700 block mb-1">💡 Kreativität & Kritik:</strong> Ermutigen Sie zum Experimentieren, aber auch zur kritischen Reflexion über die Ergebnisse und den kreativen Prozess mit KI. (MI.2, MU.5)
+						<strong class="text-blue-700 block mb-1">💡 Kreativität & Kritik:</strong> Ermutigen Sie zum Experimentieren, aber auch zur kritischen Reflexion über die Ergebnisse und den kreativen Prozess mit KI.
 					</div>
 				</div>
 			</div>
