@@ -92,7 +92,7 @@ export const actions: Actions = {
                 }
 
                 const { error } = await supabase
-                        .from('song_ratings')
+                        .from('ratings')
                         .upsert(
                                 {
                                         song_id: songId,
