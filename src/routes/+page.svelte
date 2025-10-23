@@ -67,7 +67,8 @@
 	</div>
 
 	<!-- Hauptinhalt Container -->
-	<div class="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-4xl w-full mb-24"> {/* Mehr Abstand nach unten hinzugefügt */}
+	<!-- KORREKTUR: Kommentar-Syntax von {/*...*/} zu <!--...--> geändert -->
+	<div class="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-4xl w-full mb-24"> <!-- Mehr Abstand nach unten hinzugefügt -->
 		<!-- Linke Spalte: Globale Top-Songs -->
 		<div class="bg-white p-6 rounded-xl shadow-xl animate-fade-in-up animation-delay-400">
 			<h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">🏆 Top 10 🏆</h2>
