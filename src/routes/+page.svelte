@@ -14,7 +14,8 @@
 	<!-- Angepasstes Schräges Banner oben rechts -->
 	<div class="absolute top-0 right-0 w-48 h-48 overflow-hidden z-50 pointer-events-none">
 		<!-- KORREKTUR: Rotation geändert von -rotate-45 zu rotate-45 -->
-		<a href="/login" class="absolute block w-[200%] transform rotate-45 bg-pink-600 text-white text-center py-2 shadow-lg transition-colors duration-300 ease-in-out whitespace-nowrap pointer-events-auto hover:bg-pink-700" style="top: 50px; right: -50px;"> {/* Position leicht angepasst */}
+		<!-- KORREKTUR: Kommentar-Syntax von {/*...*/} zu <!--...--> geändert -->
+		<a href="/login" class="absolute block w-[200%] transform rotate-45 bg-pink-600 text-white text-center py-2 shadow-lg transition-colors duration-300 ease-in-out whitespace-nowrap pointer-events-auto hover:bg-pink-700" style="top: 50px; right: -50px;"> <!-- Position leicht angepasst -->
 			<span class="block text-sm font-bold uppercase tracking-wider">BETA</span>
 		</a>
 	</div>
