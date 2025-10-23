@@ -1,9 +1,8 @@
 <!-- Zeigt globale Hitparade UND Beitrittsformular für nicht eingeloggte User --><script lang="ts">
 	import type { PageData, ActionData } from './$types';
 	import { enhance } from '$app/forms';
-	import { onMount } from 'svelte';
-	// Import confetti library (funktioniert jetzt, da in package.json)
-	import confetti from 'canvas-confetti';
+	// Import confetti library (funktioniert jetzt, da in package.json) - Nicht mehr benötigt für BETA-Label
+	// import confetti from 'canvas-confetti';
 
 	export let data: PageData;
 	export let form: ActionData; // Für Fehlermeldungen des Beitrittsformulars
@@ -11,55 +10,44 @@
 	// data.user ist hier immer null oder anonym
 	// data.topSongs enthält die Liste der Top-Songs
 
-	// Funktion zum Auslösen des Konfettis
-	function triggerConfetti(event: MouseEvent) {
-		const target = event.currentTarget as HTMLElement | null;
-		if (!target) return;
+	// Funktion zum Auslösen des Konfettis - Nicht mehr benötigt
+	// function triggerConfetti(event: MouseEvent) {
+	// 	const target = event.currentTarget as HTMLElement | null;
+	// 	if (!target) return;
 
-		const rect = target.getBoundingClientRect();
-		const originX = rect.left + rect.width / 2;
-		const originY = rect.top + rect.height / 2;
+	// 	const rect = target.getBoundingClientRect();
+	// 	const originX = rect.left + rect.width / 2;
+	// 	const originY = rect.top + rect.height / 2;
 
-		confetti({
-			particleCount: 100,
-			spread: 70,
-			origin: {
-				x: originX / window.innerWidth, // Ursprung auf Klickposition relativ zum Fenster
-				y: originY / window.innerHeight
-			},
-			colors: ['#ec4899', '#f472b6', '#f9a8d4', '#ffffff'] // Pink-Töne und Weiß
-		});
-	}
+	// 	confetti({
+	// 		particleCount: 100,
+	// 		spread: 70,
+	// 		origin: {
+	// 			x: originX / window.innerWidth, // Ursprung auf Klickposition relativ zum Fenster
+	// 			y: originY / window.innerHeight
+	// 		},
+	// 		colors: ['#ec4899', '#f472b6', '#f9a8d4', '#ffffff'] // Pink-Töne und Weiß
+	// 	});
+	// }
 
 </script>
 
-<!-- Add confetti library (CDN ist nicht mehr nötig, da wir es installieren) --><!-- <svelte:head>
-	<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-</svelte:head> --><div class="relative min-h-screen bg-gradient-to-br from-pink-100 via-purple-100 to-blue-100 flex flex-col items-center justify-start pt-16 px-4 overflow-hidden">
-	<!-- NEUER Schräger Banner oben LINKS --><div class="absolute top-0 left-0 w-48 h-48 overflow-hidden z-50 pointer-events-none">
-		<button
-			on:click={triggerConfetti}
-			class="absolute block w-[200%] transform -rotate-45 bg-pink-600 text-white text-center py-1 transition-colors duration-300 ease-in-out whitespace-nowrap pointer-events-auto hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-2"
-			style="top: 35px; left: -90px;" <!-- Position für horizontale Mitte und Rand angepasst -->aria-label="Beta Version - Klick für Konfetti!"
-			title="Beta Version - Klick für Konfetti!"
-		>
-			<span class="block text-sm font-bold uppercase tracking-wider">BETA</span>
-		</button>
-	</div>
-
-
-	<div class="text-center mb-12">
+<div class="relative min-h-screen bg-gradient-to-br from-pink-100 via-purple-100 to-blue-100 flex flex-col items-center justify-start pt-16 px-4 overflow-hidden">
+	<!-- Alter Schräger Banner entfernt --><div class="text-center mb-12">
 		<!-- Noten-Icon mit Pulsier-Animation --><svg class="mx-auto h-20 w-auto text-pink-500 mb-4 animate-pulse-light" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 			<path d="M9 18V5l12-2v13"/>
 			<circle cx="6" cy="18" r="3"/>
 			<circle cx="18" cy="16" r="3"/>
 		</svg>
-		<!-- Titel mit subtiler Animation --><h1 class="text-4xl sm:text-5xl font-extrabold text-gray-900 mb-2 animate-fade-in-up">MelodyMentor Charts</h1>
+		<!-- Titel mit hochgestelltem BETA-Label --><h1 class="text-4xl sm:text-5xl font-extrabold text-gray-900 mb-2 animate-fade-in-up">
+			MelodyMentor Charts
+			<sup class="ml-1 text-pink-600 text-base align-super font-bold">BETA</sup>
+		</h1>
 		<p class="text-lg text-gray-600 animate-fade-in-up animation-delay-200">Die aktuell beliebtesten KI-Songs aus allen Klassen.</p>
 	</div>
 
-	<!-- Hauptinhalt Container --><!-- KORREKTUR: Kommentar-Syntax von {/*...*/} zu <!--...-->geändert -->
-	<div class="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-4xl w-full mb-24"> <!-- Mehr Abstand nach unten hinzugefügt --><!-- Linke Spalte: Globale Top-Songs --><div class="bg-white p-6 rounded-xl shadow-xl animate-fade-in-up animation-delay-400">
+	<!-- Hauptinhalt Container --><div class="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-4xl w-full mb-24">
+		<!-- Linke Spalte: Globale Top-Songs --><div class="bg-white p-6 rounded-xl shadow-xl animate-fade-in-up animation-delay-400">
 			<h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">🏆 Top 10 🏆</h2>
 			{#if data.topSongs && data.topSongs.length > 0}
 				<ol class="space-y-4">
