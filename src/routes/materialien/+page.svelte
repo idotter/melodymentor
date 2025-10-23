@@ -44,11 +44,11 @@
 			</ul>
 		</section>
 
-		<!-- NEUER WORKSHOP-BLOCK -->
+		<!-- WORKSHOP-BLOCK -->
 		<section class="bg-purple-50 border border-purple-200 rounded-lg p-6 text-center shadow-sm">
 			<h2 class="text-2xl font-bold text-purple-800 mb-3">Workshop: KI-Musik im Unterricht</h2>
 			<p class="text-purple-700 leading-relaxed mb-4">
-				Entdecken Sie in unserem praxisorientierten Workshop, wie Sie KI-Musikgeneratoren didaktisch sinnvoll in Ihrem M+I- oder Musikunterricht einsetzen können. Lernen Sie Tools kennen, entwickeln Sie eigene Unterrichtsszenarien und tauschen Sie sich mit Kolleg\*innen aus.
+				Entdecken Sie in unserem praxisorientierten Workshop, wie Sie KI-Musikgeneratoren didaktisch sinnvoll in Ihrem M+I- oder Musikunterricht einsetzen können. Lernen Sie Tools kennen, entwickeln Sie eigene Unterrichtsszenarien und tauschen Sie sich mit Kollegen aus.
 			</p>
 			<button
 				on:click={handleWorkshopSignup}
@@ -72,6 +72,11 @@
 					<a href="https://www.udio.com/" target="_blank" rel="noopener noreferrer" class="text-pink-600 hover:underline text-sm mt-2 inline-block">Besuchen &rarr;</a>
 				</div>
 			</div>
+		</section>
+
+		<!-- NEUER DISCLAIMER-BLOCK -->
+		<section class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-800 shadow-sm">
+			<strong class="font-semibold">Hinweis:</strong> Die hier empfohlenen Tools sind externe Angebote von Drittanbietern. MelodyMentor ist nicht für deren Inhalte oder Funktionalität verantwortlich. Bitte beachten Sie, dass bei der Nutzung dieser Tools möglicherweise Kosten entstehen können und deren jeweilige Nutzungsbedingungen sowie Datenschutzrichtlinien gelten.
 		</section>
 
 		<!-- ANGEPASSTER BLOCK: Kompetenzen -->
