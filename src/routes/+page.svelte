@@ -3,7 +3,8 @@
 	import type { PageData, ActionData } from './$types';
 	import { enhance } from '$app/forms';
 	import { onMount } from 'svelte';
-	import confetti from 'canvas-confetti'; // Import confetti library
+	// Import confetti library (funktioniert jetzt, da in package.json)
+	import confetti from 'canvas-confetti';
 
 	export let data: PageData;
 	export let form: ActionData; // Für Fehlermeldungen des Beitrittsformulars
@@ -13,7 +14,10 @@
 
 	// Funktion zum Auslösen des Konfettis
 	function triggerConfetti(event: MouseEvent) {
-		const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+		const target = event.currentTarget as HTMLElement | null;
+		if (!target) return;
+
+		const rect = target.getBoundingClientRect();
 		const originX = rect.left + rect.width / 2;
 		const originY = rect.top + rect.height / 2;
 
@@ -30,10 +34,10 @@
 
 </script>
 
-<!-- Add confetti library -->
-<svelte:head>
+<!-- Add confetti library (CDN ist nicht mehr nötig, da wir es installieren) -->
+<!-- <svelte:head>
 	<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-</svelte:head>
+</svelte:head> -->
 
 <div class="relative min-h-screen bg-gradient-to-br from-pink-100 via-purple-100 to-blue-100 flex flex-col items-center justify-start pt-16 px-4 overflow-hidden">
 	<!-- NEUER Schräger Banner oben LINKS -->
@@ -42,19 +46,13 @@
 			on:click={triggerConfetti}
 			class="absolute block w-[200%] transform -rotate-45 bg-pink-600 text-white text-center py-1 shadow-lg transition-colors duration-300 ease-in-out whitespace-nowrap pointer-events-auto hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-2"
 			style="top: 30px; left: -50px;"
+			aria-label="Beta Version - Klick für Konfetti!"
+			title="Beta Version - Klick für Konfetti!"
 		>
 			<span class="block text-sm font-bold uppercase tracking-wider">BETA</span>
 		</button>
 	</div>
 
-	<!-- ALTER Banner ( entfernt ) -->
-	<!--
-	<div class="absolute top-0 right-0 w-48 h-48 overflow-hidden z-50 pointer-events-none">
-		<a href="/login" class="absolute block w-[200%] transform rotate-45 bg-pink-600 text-white text-center py-2 shadow-lg transition-colors duration-300 ease-in-out whitespace-nowrap pointer-events-auto hover:bg-pink-700" style="top: 50px; right: -50px;">
-			<span class="block text-sm font-bold uppercase tracking-wider">BETA</span>
-		</a>
-	</div>
-	-->
 
 	<div class="text-center mb-12">
 		<!-- Noten-Icon mit Pulsier-Animation -->
@@ -68,7 +66,8 @@
 		<p class="text-lg text-gray-600 animate-fade-in-up animation-delay-200">Die aktuell beliebtesten KI-Songs aus allen Klassen.</p>
 	</div>
 
-	<div class="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-4xl w-full">
+	<!-- Hauptinhalt Container -->
+	<div class="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-4xl w-full mb-24"> {/* Mehr Abstand nach unten hinzugefügt */}
 		<!-- Linke Spalte: Globale Top-Songs -->
 		<div class="bg-white p-6 rounded-xl shadow-xl animate-fade-in-up animation-delay-400">
 			<h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">🏆 Top 10 🏆</h2>
@@ -139,6 +138,29 @@
 			</div>
 		</div>
 	</div>
+
+	<!-- NEUER Footer -->
+	<footer class="w-full bg-gradient-to-t from-gray-200 via-gray-100 to-transparent mt-auto py-8 px-4">
+		<div class="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center text-center md:text-left">
+			<div class="mb-4 md:mb-0">
+				<p class="text-gray-600 text-sm">&copy; {new Date().getFullYear()} MelodyMentor. Alle Rechte vorbehalten.</p>
+				<!-- Hier könnte noch ein kleiner Logo oder Slogan stehen -->
+			</div>
+			<nav class="flex flex-wrap justify-center md:justify-end items-center gap-x-6 gap-y-2 text-sm text-gray-700 font-medium">
+				<a href="/login" class="hover:text-pink-600">Lehrerlogin</a>
+				<a href="/impressum" class="hover:text-pink-600">Impressum</a>
+				<a href="/datenschutz" class="hover:text-pink-600">Datenschutz</a>
+				<a href="/ueber-uns" class="hover:text-pink-600">Über uns</a>
+				<a href="/faq" class="hover:text-pink-600">FAQ</a>
+				<a href="/materialien" class="hover:text-pink-600">Materialien</a>
+				<a href="https://www.instagram.com" target="_blank" rel="noopener noreferrer" class="hover:text-pink-600" aria-label="Instagram">
+					<!-- Instagram SVG Icon -->
+					<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
+				</a>
+			</nav>
+		</div>
+	</footer>
+
 </div>
 
 <style lang="postcss">
@@ -186,7 +208,5 @@
 	.animation-delay-900 { animation-delay: 0.9s; }
 	.animation-delay-1000 { animation-delay: 1.0s; }
 
-	/* Anpassung für das schräge Banner */
-	/* (Der Großteil ist inline via Tailwind, hier ggf. komplexere Styles) */
 </style>
 
